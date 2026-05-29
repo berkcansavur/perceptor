@@ -669,6 +669,55 @@ button.primary {
   margin: 8px 0;
 }
 
+.task-impact {
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 7px;
+  padding: 7px 9px;
+}
+
+.task-impact.risk-low { border-left-color: var(--field); }
+.task-impact.risk-medium { border-left-color: var(--enum); }
+.task-impact.risk-high { border-left-color: #e0607a; }
+
+.impact-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+
+.impact-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+}
+
+.risk-label {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.risk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.risk-low .risk-dot { background: var(--field); }
+.risk-medium .risk-dot { background: var(--enum); }
+.risk-high .risk-dot { background: #e0607a; }
+
+.impact-notes {
+  margin: 5px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .task-commit {
   margin: 8px 0;
   border: 1px solid var(--border);

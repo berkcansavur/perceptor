@@ -86,13 +86,14 @@ function enqueueTask(rootDirectory, payload) {
   return task;
 }
 
-function updateTask(rootDirectory, { id, status, message, diff, role, commitMessage }) {
+function updateTask(rootDirectory, { id, status, message, diff, role, commitMessage, impact }) {
   const tasks = readTasks(rootDirectory);
   const task = tasks.find((item) => item.id === id);
   if (!task) return null;
   if (status) task.status = status;
   if (diff !== undefined) task.diff = diff;
   if (commitMessage !== undefined) task.commitMessage = commitMessage;
+  if (impact !== undefined) task.impact = impact;
   if (message) {
     task.messages.push({ role: role || "user", text: message, at: new Date().toISOString() });
   }

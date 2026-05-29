@@ -6,9 +6,9 @@ services:
     volumes:
       # Mount the folder that contains your repositories.
       # Override WORKSPACE to point at your own projects directory.
-      - "${WORKSPACE:-./examples}:/workspace"
+      - "${WORKSPACE:-..}:/workspace"
     environment:
       # Host absolute path of the mounted workspace, so the UI can build
       # "Open in VS Code" links and Claude can resolve host paths.
-      - HOST_WORKSPACE_ROOT=${WORKSPACE:-./examples}
+      - HOST_WORKSPACE_ROOT=${WORKSPACE:-..}
       - CONTAINER_WORKSPACE=/workspace
