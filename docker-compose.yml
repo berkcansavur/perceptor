@@ -1,0 +1,14 @@
+services:
+  repo-visualiser:
+    build: .
+    ports:
+      - "4173:4173"
+    volumes:
+      # Mount the folder that contains your repositories.
+      # Override WORKSPACE to point at your own projects directory.
+      - "${WORKSPACE:-./examples}:/workspace"
+    environment:
+      # Host absolute path of the mounted workspace, so the UI can build
+      # "Open in VS Code" links and Claude can resolve host paths.
+      - HOST_WORKSPACE_ROOT=${WORKSPACE:-./examples}
+      - CONTAINER_WORKSPACE=/workspace
