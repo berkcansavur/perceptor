@@ -1,0 +1,7 @@
+src/**
+esbuild.js
+tsconfig.json
+.gitignore
+**/*.ts
+**/*.map
+**/.DS_Store

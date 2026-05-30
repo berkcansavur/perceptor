@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-core",
+      "type": "npm",
+      "script": "build:core",
+      "path": "",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "compile-extension",
+      "type": "npm",
+      "script": "compile",
+      "path": "packages/extension",
+      "dependsOn": ["build-core"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "watch-extension",
+      "type": "npm",
+      "script": "watch",
+      "path": "packages/extension",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

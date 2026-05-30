@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": [],
+    "noEmit": true,
+    "moduleResolution": "node",
+
+    // DOM-heavy UI keeps strict:true but relaxes three ultra-pedantic flags
+    // that add noise without real safety on browser code.
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": ["src/web/**/*"]
+}

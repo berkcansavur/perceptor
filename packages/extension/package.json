@@ -1,0 +1,80 @@
+{
+  "name": "repo-visualiser-vscode",
+  "displayName": "Repo Visualiser",
+  "description": "Interactive dependency/behavior map for your repository, with Claude-powered edits that use your own local Claude CLI and tokens.",
+  "version": "0.1.0",
+  "publisher": "berkcansavur",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "visualization",
+    "dependency graph",
+    "architecture",
+    "claude",
+    "refactoring"
+  ],
+  "galleryBanner": {
+    "color": "#0b0e14",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/berkcansavur/repo-visualiser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/berkcansavur/repo-visualiser/issues"
+  },
+  "homepage": "https://github.com/berkcansavur/repo-visualiser#readme",
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "repoVisualiser.open",
+        "title": "Open",
+        "category": "Repo Visualiser"
+      }
+    ],
+    "configuration": {
+      "title": "Repo Visualiser",
+      "properties": {
+        "repoVisualiser.claudePath": {
+          "type": "string",
+          "default": "claude",
+          "description": "Path to the Claude CLI used to process tasks. Must be on PATH or an absolute path."
+        },
+        "repoVisualiser.autoProcessOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically enable Auto-process when the panel opens. Off by default to avoid spending Claude tokens unexpectedly."
+        },
+        "repoVisualiser.port": {
+          "type": "number",
+          "default": 0,
+          "description": "Port for the local server (0 = pick a free port automatically)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "check-types": "tsc --noEmit",
+    "vscode:prepublish": "node esbuild.js"
+  },
+  "dependencies": {
+    "repo-visualiser": "*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "esbuild": "^0.21.0"
+  }
+}

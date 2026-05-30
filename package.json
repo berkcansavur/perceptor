@@ -1,18 +1,21 @@
 {
-  "name": "repo-visualiser",
+  "name": "repo-visualiser-monorepo",
   "version": "0.1.0",
-  "description": "Interactive dependency/behavior map for a code repository. Phase 1: visualization.",
-  "type": "commonjs",
-  "bin": {
-    "visualise": "bin/visualise.js"
-  },
-  "scripts": {
-    "analyze": "node bin/visualise.js --analyze-only",
-    "start": "node bin/visualise.js"
-  },
+  "private": true,
+  "description": "Interactive dependency/behavior map for a code repository — workspaces root.",
   "license": "MIT",
-  "dependencies": {
-    "tree-sitter-wasms": "^0.1.11",
-    "web-tree-sitter": "^0.22.6"
+  "workspaces": [
+    "packages/core",
+    "packages/extension"
+  ],
+  "scripts": {
+    "build": "npm run build -w repo-visualiser && npm run compile -w repo-visualiser-vscode",
+    "build:core": "npm run build -w repo-visualiser",
+    "check-types": "npm run check-types -w repo-visualiser && npm run check-types -w repo-visualiser-vscode",
+    "start": "npm run start -w repo-visualiser"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "typescript": "^5.4.0"
   }
 }
