@@ -227,31 +227,35 @@ export class TasksPanel {
           `<div class="msg msg-${message.role}"><b>${message.role}:</b> ${escapeHtml(message.text)}</div>`
       )
       .join("");
+    const artifact = task.artifact;
+    const impactReport = artifact.kind === "none" ? null : artifact.impact;
     const impact =
-      task.impact && (task.impact.notes ?? []).length
-        ? `<div class="task-impact risk-${task.impact.risk ?? "low"}">
+      impactReport && impactReport.notes.length
+        ? `<div class="task-impact risk-${impactReport.risk || "low"}">
             <div class="impact-head"><span class="risk-dot"></span><span class="impact-title">${t(
               "impact.title"
-            )}</span><span class="risk-label">${t("risk." + (task.impact.risk ?? "low"))}</span></div>
-            <ul class="impact-notes">${(task.impact.notes ?? [])
+            )}</span><span class="risk-label">${t("risk." + (impactReport.risk || "low"))}</span></div>
+            <ul class="impact-notes">${impactReport.notes
               .map((note) => `<li>${escapeHtml(note)}</li>`)
               .join("")}</ul>
           </div>`
         : "";
-    const diff = task.diff ? `<pre class="task-diff">${escapeHtml(task.diff)}</pre>` : "";
+    const diffText = artifact.kind === "none" ? "" : artifact.diff;
+    const diff = diffText ? `<pre class="task-diff">${escapeHtml(diffText)}</pre>` : "";
     const actions =
       task.status === "proposed"
         ? `<div class="task-actions"><button class="primary" data-approve="${task.id}">${t(
             "task.approve"
           )}</button><button data-reject="${task.id}">${t("task.reject")}</button></div>`
         : "";
-    const commit = task.commitMessage
+    const commitMessage = artifact.kind === "applied" ? artifact.commitMessage : "";
+    const commit = commitMessage
       ? `<div class="task-commit"><div class="task-commit-head"><span>${t(
           "commit.title"
         )}</span><button class="commit-copy" data-copy="${task.id}">${t(
           "commit.copy"
         )}</button></div><pre class="task-commit-msg" data-commit="${task.id}">${escapeHtml(
-          task.commitMessage
+          commitMessage
         )}</pre></div>`
       : "";
 

@@ -145,14 +145,18 @@ export type TaskKind =
   | RequestKind
   | DescribeBehaviorKind;
 
-// Lifecycle fields. diff/impact/commitMessage are null until a run produces them —
-// and describe-behavior reaches "applied" with none of them — so null here is a
-// real "not produced" state, not a missing-key bag.
+// The change artifact a run produced, discriminated by `kind`: a task that hasn't been
+// proposed carries `none`, a proposal carries its diff + impact, and an applied change
+// adds the commit message. The fields that exist are exactly those the stage has — no
+// `diff: string | null` "maybe produced" trio. (describe-behavior applies with `none`.)
+export type TaskArtifact =
+  | { kind: "none" }
+  | { kind: "proposed"; diff: string; impact: TaskImpact }
+  | { kind: "applied"; diff: string; impact: TaskImpact; commitMessage: string };
+
 export type TaskLifecycle = {
   status: TaskStatus;
-  diff: string | null;
-  impact: TaskImpact | null;
-  commitMessage: string | null;
+  artifact: TaskArtifact;
 }
 
 // Identity + thread + host-side runtime bookkeeping. Runtime fields are orthogonal
@@ -175,26 +179,18 @@ export type Task = TaskKind & TaskLifecycle & TaskMeta;
 
 export type EnqueuePayload = TaskKind;
 
-export type UpdatePayload = {
-  id: string;
-  status: TaskStatus | null;
-  message: string | null;
-  diff: string | null;
-  role: string | null;
-  commitMessage: string | null;
-  impact: TaskImpact | null;
-  dismissed: boolean | null;
-}
+// The webview sends exactly one update intent, discriminated by `intent`; each carries
+// only the fields it sets — no nullable patch-bag where null means "leave unchanged".
+export type SetStatusUpdate = { id: string; intent: "set-status"; status: TaskStatus };
+export type ReplyUpdate = { id: string; intent: "reply"; message: string };
+export type DismissUpdate = { id: string; intent: "dismiss" };
+export type UpdatePayload = SetStatusUpdate | ReplyUpdate | DismissUpdate;
 
-// Scaffolding request: create a file or folder. kind is null only when the wire sent
-// neither — the service rejects it; the other fields are null when not supplied.
-export type CreatePayload = {
-  kind: "file" | "folder" | null;
-  dir: string | null;
-  name: string | null;
-  template: string | null;
-  typeName: string | null;
-}
+// Scaffolding request, discriminated by `kind`: a file carries its template + type name,
+// a folder carries neither — so the shape tells you which fields exist, no nullable bag.
+export type CreateFile = { kind: "file"; dir: string; name: string; template: string; typeName: string };
+export type CreateFolder = { kind: "folder"; dir: string; name: string };
+export type CreatePayload = CreateFile | CreateFolder;
 
 // An action that carries no request body. A concrete empty object (not `unknown`,
 // not an index bag) so callers must pass `{}` and nothing else type-checks into it.

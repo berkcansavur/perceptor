@@ -3,18 +3,19 @@ import * as os from "os";
 import * as path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TaskStore } from "../src/service/task/TaskStore";
-import type { EnqueuePayload, UpdatePayload } from "../src/service/types";
+import type { EnqueuePayload } from "../src/service/types";
 
 function request(description: string): EnqueuePayload {
   return { type: "request", spec: { description } };
 }
 
-function propose(id: string, diff: string): UpdatePayload {
-  return { id, status: "proposed", message: null, diff, role: null, commitMessage: null, impact: null, dismissed: null };
-}
-
 let root: string;
 let store: TaskStore;
+
+// Inject a proposal the way a headless run does — via the merged result, not the update RPC.
+function propose(id: string, diff: string): void {
+  store.mergeResult(id, { kind: "proposed", diff, impact: { risk: "low", notes: [] }, messages: [] });
+}
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "rv-store-"));
@@ -28,7 +29,7 @@ afterEach(() => {
 describe("TaskStore.editRequest", () => {
   it("rewrites the prompt and resets the task to re-run cold", () => {
     const task = store.enqueue(request("first ask"));
-    store.update(propose(task.id, "--- a/x\n+++ b/x\n"));
+    propose(task.id, "--- a/x\n+++ b/x\n");
     store.mutate(task.id, (item) => {
       item.sessionId = "sess-1";
       item.auto = { status: "proposed", attempts: 1 };
@@ -37,13 +38,13 @@ describe("TaskStore.editRequest", () => {
 
     const edited = store.editRequest(task.id, "second ask");
 
-    expect(edited?.status).toBe("pending");
+    expect(edited.status).toBe("pending");
     const stored = store.read()[0];
     expect(stored?.type).toBe("request");
     if (stored?.type === "request") {
       expect(stored.spec.description).toBe("second ask");
     }
-    expect(stored?.diff).toBeNull();
+    expect(stored?.artifact.kind).toBe("none");
     expect(stored?.sessionId).toBeNull();
     expect(stored?.auto).toBeNull();
     expect(stored?.messages).toEqual([]);
@@ -71,16 +72,16 @@ describe("TaskStore.editRequest", () => {
     expect(usage?.costUsd).toBeCloseTo(0.01);
   });
 
-  it("returns null for a non-request task", () => {
+  it("throws for a non-request task", () => {
     const folder = store.enqueue({ type: "create-folder", from: { dir: "src" }, spec: { name: "x" } });
-    expect(store.editRequest(folder.id, "nope")).toBeNull();
+    expect(() => store.editRequest(folder.id, "nope")).toThrow();
   });
 });
 
 describe("TaskStore.editMessage", () => {
   function withThread(): string {
     const task = store.enqueue(request("first ask"));
-    store.update({ ...propose(task.id, "--- a/x\n+++ b/x\n") });
+    propose(task.id, "--- a/x\n+++ b/x\n");
     store.mutate(task.id, (item) => {
       item.sessionId = "sess-1";
       item.messages.push({ role: "user", text: "do A", at: "2026-01-01T00:00:00Z" });
@@ -95,10 +96,10 @@ describe("TaskStore.editMessage", () => {
 
     const edited = store.editMessage(id, 0, "do A differently");
 
-    expect(edited?.status).toBe("pending");
+    expect(edited.status).toBe("pending");
     const stored = store.read()[0];
     expect(stored?.messages).toEqual([{ role: "user", text: "do A differently", at: "2026-01-01T00:00:00Z" }]);
-    expect(stored?.diff).toBeNull();
+    expect(stored?.artifact.kind).toBe("none");
     expect(stored?.sessionId).toBeNull();
   });
 
@@ -123,7 +124,7 @@ describe("TaskStore.editMessage", () => {
 
   it("refuses to edit a claude message or an out-of-range index", () => {
     const id = withThread();
-    expect(store.editMessage(id, 1, "nope")).toBeNull();
-    expect(store.editMessage(id, 9, "nope")).toBeNull();
+    expect(() => store.editMessage(id, 1, "nope")).toThrow();
+    expect(() => store.editMessage(id, 9, "nope")).toThrow();
   });
 });

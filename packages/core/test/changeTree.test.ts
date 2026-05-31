@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { buildChangeTree } from "../src/web/changes/changeTree";
 import type { Task } from "../src/web/types";
 
-function task(partial: Partial<Task>): Task {
+function task(partial: Partial<Task> & { diff?: string | null }): Task {
+  const { diff, ...rest } = partial;
   return {
     id: "t",
     type: "add-behavior",
@@ -10,8 +11,8 @@ function task(partial: Partial<Task>): Task {
     from: null,
     to: null,
     spec: null,
-    diff: null,
-    ...partial,
+    artifact: diff ? { kind: "proposed", diff, impact: { risk: "low", notes: [] } } : { kind: "none" },
+    ...rest,
   } as Task;
 }
 

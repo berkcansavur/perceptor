@@ -6,9 +6,7 @@ function task(kind: TaskKind, diff: string | null): Task {
   return {
     ...kind,
     status: "pending",
-    diff,
-    impact: null,
-    commitMessage: null,
+    artifact: diff === null ? { kind: "none" } : { kind: "proposed", diff, impact: { risk: "low", notes: [] } },
     id: "t1",
     dismissed: false,
     lock: null,

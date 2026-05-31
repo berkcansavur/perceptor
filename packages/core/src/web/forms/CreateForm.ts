@@ -132,14 +132,17 @@ export class CreateForm {
       return;
     }
     const isFile = this.target.kind === "file";
+    const dir = this.dirInput.value.trim();
     const hasNamedTemplate = isFile && NAMED_TEMPLATES.has(this.templateSelect.value);
-    const body: CreatePayload = {
-      kind: this.target.kind === "folder" ? "folder" : "file",
-      dir: this.dirInput.value.trim(),
-      name,
-      template: isFile ? this.templateSelect.value : null,
-      typeName: hasNamedTemplate ? this.typeNameInput.value.trim() || this.fileBaseName() : null,
-    };
+    const body: CreatePayload = isFile
+      ? {
+          kind: "file",
+          dir,
+          name,
+          template: this.templateSelect.value,
+          typeName: hasNamedTemplate ? this.typeNameInput.value.trim() || this.fileBaseName() : "",
+        }
+      : { kind: "folder", dir, name };
     try {
       await this.api.create(body);
     } catch {

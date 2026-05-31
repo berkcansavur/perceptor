@@ -167,7 +167,7 @@ export class ChangesView {
     }
     let changes: Task[] = [];
     try {
-      changes = (await this.api.tasks()).filter((task) => Boolean(task.diff) && !task.dismissed);
+      changes = (await this.api.tasks()).filter((task) => task.artifact.kind !== "none" && !task.dismissed);
     } catch {
       return;
     }
@@ -294,7 +294,7 @@ export class ChangesView {
   // interleaved git look — split it into a removed-side block and an added-side block —
   // and keep the set actionable (impact, conversation, reply box, approve/reject).
   private renderRawChange(task: Task): string {
-    const rows = (task.diff ?? "").split("\n");
+    const rows = (task.artifact.kind === "none" ? "" : task.artifact.diff).split("\n");
     const removed = rows.filter((line) => !line.startsWith("+")).map((line) => this.stripMarker(line)).join("\n");
     const added = rows.filter((line) => !line.startsWith("-")).map((line) => this.stripMarker(line)).join("\n");
     const actions =
@@ -511,7 +511,8 @@ export class ChangesView {
   // before and after as two clean blocks instead of an interleaved git diff. Hunks with no
   // real change (before === after) are dropped.
   private regionsHtml(task: Task, filePath: string): string {
-    const file = parseUnifiedDiff(task.diff ?? "").find((candidate) => candidate.path === filePath);
+    const diff = task.artifact.kind === "none" ? "" : task.artifact.diff;
+    const file = parseUnifiedDiff(diff).find((candidate) => candidate.path === filePath);
     if (!file) {
       return "";
     }
@@ -583,11 +584,12 @@ export class ChangesView {
   }
 
   private impactBlock(task: Task): string {
-    const notes = task.impact?.notes ?? [];
+    const impactReport = task.artifact.kind === "none" ? null : task.artifact.impact;
+    const notes = impactReport ? impactReport.notes : [];
     if (notes.length === 0) {
       return "";
     }
-    const risk = task.impact?.risk ?? "low";
+    const risk = impactReport ? impactReport.risk || "low" : "low";
     const items = notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("");
     return `<div class="changes-impact risk-${risk}"><span class="risk-dot"></span><span class="risk-label">${t(
       "risk." + risk

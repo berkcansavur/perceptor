@@ -102,8 +102,8 @@ export class WorkspaceService {
   }
 
   async create(payload: CreatePayload): Promise<{ stats: Graph["stats"] }> {
-    const directory = (payload.dir ?? "").replace(/^\/+/, "");
-    const name = (payload.name ?? "").trim();
+    const directory = payload.dir.replace(/^\/+/, "");
+    const name = payload.name.trim();
     if (!name || name.includes("/") || name.includes("..")) {
       throw new InvalidNameException(name);
     }
@@ -124,8 +124,8 @@ export class WorkspaceService {
       fs.mkdirSync(absoluteDir, { recursive: true });
       const content = this.scaffolder.generate({
         fileName: name,
-        template: payload.template ?? "empty",
-        typeName: payload.typeName ?? "",
+        template: payload.template,
+        typeName: payload.typeName,
         dir: directory,
         absoluteDir,
       });

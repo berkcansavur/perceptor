@@ -409,7 +409,7 @@ export class ChatPanel {
             request.id
           )}</div>`;
     const bubbles = (request.messages ?? []).map((message, index) => this.renderBubble(request, message, index)).join("");
-    const changesLink = request.diff
+    const changesLink = request.artifact.kind !== "none"
       ? `<button class="chat-view-changes" data-view-changes="${request.id}">${t("chat.viewChanges")}</button>`
       : "";
     const actions =

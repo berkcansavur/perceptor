@@ -76,7 +76,8 @@ function addTask(root: ChangeFolder, task: Task): void {
   }
   // Free-form (request) diff: one file row per real file — coloured by create/edit/
   // delete — with the changed methods surfaced beneath, so it reads like Folder mode.
-  for (const diffFile of parseUnifiedDiff(task.diff ?? "")) {
+  const diff = task.artifact.kind === "none" ? "" : task.artifact.diff;
+  for (const diffFile of parseUnifiedDiff(diff)) {
     const file = fileLevel(root, diffFile.path, FILE_STATUS[diffFile.kind], task.id, diffFile.added, diffFile.removed);
     changedMembers(diffFile, task.id).forEach((member) => file.methods.push(member));
   }

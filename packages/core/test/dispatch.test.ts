@@ -40,7 +40,7 @@ describe("CoreService.dispatch — envelope + global exception funnel", () => {
   });
 
   it("maps a domain exception to its ErrorResponse code", async () => {
-    const response = await core.dispatch("updateTask", { id: "missing", status: "approved" });
+    const response = await core.dispatch("updateTask", { id: "missing", intent: "set-status", status: "approved" });
 
     expect(response.success).toBe(false);
     if (!response.success) {

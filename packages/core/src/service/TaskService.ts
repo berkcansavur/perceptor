@@ -1,7 +1,6 @@
 import { TaskStore } from "./task/TaskStore";
 import { AutoProcessor } from "./processing/AutoProcessor";
 import type { AutoActivity, AutoStatus, EnqueuePayload, Task, UpdatePayload } from "./types";
-import { RequestNotFoundException, TaskNotFoundException } from "./exception";
 
 // The task lifecycle and its headless processing. Owns the TaskStore (the queue) and the
 // AutoProcessor (the event-driven Claude runner). The cross-cutting invariant lives here in
@@ -21,36 +20,27 @@ export class TaskService {
   }
 
   enqueueTask(payload: EnqueuePayload): { task: Task } {
-    const task = this.tasks.enqueue(payload);
+    const enqueuedTask = this.tasks.enqueue(payload);
     this.autoProcessor.notify();
-    return { task };
+    return { task: enqueuedTask };
   }
 
   updateTask(payload: UpdatePayload): { task: Task } {
-    const task = this.tasks.update(payload);
-    if (!task) {
-      throw new TaskNotFoundException(payload.id);
-    }
+    const updatedTask = this.tasks.update(payload);
     this.autoProcessor.notify();
-    return { task };
+    return { task: updatedTask };
   }
 
   editRequest(id: string, description: string): { task: Task } {
-    const task = this.tasks.editRequest(id, description);
-    if (!task) {
-      throw new RequestNotFoundException(id);
-    }
+    const editRequestTask = this.tasks.editRequest(id, description);
     this.autoProcessor.notify();
-    return { task };
+    return { task: editRequestTask };
   }
 
   editMessage(id: string, index: number, text: string): { task: Task } {
-    const task = this.tasks.editMessage(id, index, text);
-    if (!task) {
-      throw new RequestNotFoundException(id);
-    }
+    const editMessageTask = this.tasks.editMessage(id, index, text);
     this.autoProcessor.notify();
-    return { task };
+    return { task: editMessageTask };
   }
 
   deleteTask(id: string): { id: string } {

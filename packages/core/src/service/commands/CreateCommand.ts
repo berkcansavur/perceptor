@@ -10,13 +10,17 @@ export class CreateCommand extends Command<ApiRequest["create"], Awaited<ReturnT
   }
 
   protected parse(payload: Record<string, unknown>): ApiRequest["create"] {
-    const kind = this.text(payload, "kind");
+    const dir = this.text(payload, "dir");
+    const name = this.text(payload, "name");
+    if (this.text(payload, "kind") === "folder") {
+      return { kind: "folder", dir, name };
+    }
     return {
-      kind: kind === "folder" ? "folder" : kind === "file" ? "file" : null,
-      dir: this.optionalText(payload, "dir"),
-      name: this.optionalText(payload, "name"),
-      template: this.optionalText(payload, "template"),
-      typeName: this.optionalText(payload, "typeName"),
+      kind: "file",
+      dir,
+      name,
+      template: this.text(payload, "template", "empty"),
+      typeName: this.text(payload, "typeName"),
     };
   }
 

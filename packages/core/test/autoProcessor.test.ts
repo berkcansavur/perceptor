@@ -13,11 +13,14 @@ function blankTask(): EnqueuePayload {
 }
 
 function reply(id: string, message: string): UpdatePayload {
-  return { id, status: null, message, diff: null, role: "user", commitMessage: null, impact: null, dismissed: null };
+  return { id, intent: "reply", message };
 }
 
-function approve(id: string, diff: string): UpdatePayload {
-  return { id, status: "approved", message: null, diff, role: null, commitMessage: null, impact: null, dismissed: null };
+// Give the task a diff (so it has a real file footprint) and approve it — the diff is
+// injected via the merged result, exactly as a headless propose run would.
+function approve(id: string, diff: string): void {
+  store.mergeResult(id, { kind: "proposed", diff, impact: { risk: "low", notes: [] }, messages: [] });
+  store.update({ id, intent: "set-status", status: "approved" });
 }
 
 const DEBOUNCE_MS = 150;
@@ -164,8 +167,8 @@ describe("AutoProcessor", () => {
     const a = store.enqueue(blankTask());
     const b = store.enqueue(blankTask());
     const diff = "--- a/src/Shared.ts\n+++ b/src/Shared.ts\n@@ -1 +1 @@\n-x\n+y\n";
-    store.update(approve(a.id, diff));
-    store.update(approve(b.id, diff));
+    approve(a.id, diff);
+    approve(b.id, diff);
     processor.notify();
     vi.advanceTimersByTime(DEBOUNCE_MS);
 
@@ -197,7 +200,9 @@ describe("AutoProcessor", () => {
 
     const merged = store.read()[0];
     expect(merged?.status).toBe("proposed");
-    expect(merged?.diff).toContain("+++ b/x");
+    const artifact = merged?.artifact;
+    expect(artifact?.kind).toBe("proposed");
+    expect(artifact && "diff" in artifact ? artifact.diff : "").toContain("+++ b/x");
     expect(merged?.messages.at(-1)?.text).toBe("done");
     expect(fs.existsSync(resultPath)).toBe(false);
   });

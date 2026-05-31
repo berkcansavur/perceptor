@@ -1,7 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
-import { EnqueuePayload, RunResult, Task, TaskLifecycle, TaskMessage, TaskMeta, UpdatePayload } from "../types";
+import { EnqueuePayload, RunResult, Task, TaskArtifact, TaskImpact, TaskLifecycle, TaskMessage, TaskMeta, UpdatePayload } from "../types";
 import { coerceKind } from "./taskCoercion";
+import { RequestNotFoundException, TaskNotFoundException } from "../exception";
 
 // Reads/writes the queue the UI and Claude share (.visualise/pending-actions.json).
 export class TaskStore {
@@ -37,10 +38,27 @@ export class TaskStore {
   private lifecycleOf(raw: Record<string, unknown>): TaskLifecycle {
     return {
       status: (raw["status"] as TaskLifecycle["status"]) ?? "pending",
-      diff: (raw["diff"] as string | null) ?? null,
-      impact: (raw["impact"] as TaskLifecycle["impact"]) ?? null,
-      commitMessage: (raw["commitMessage"] as string | null) ?? null,
+      artifact: this.artifactOf(raw),
     };
+  }
+
+  // Prefer the canonical `artifact` union; fall back to the legacy flat diff/impact/
+  // commitMessage fields so a queue written before this format still loads.
+  private artifactOf(raw: Record<string, unknown>): TaskArtifact {
+    const artifact = raw["artifact"] as TaskArtifact | undefined;
+    if (artifact && artifact.kind) {
+      return artifact;
+    }
+    const diff = raw["diff"];
+    const impact = raw["impact"] as TaskImpact | undefined;
+    if (typeof diff !== "string" || !impact) {
+      return { kind: "none" };
+    }
+    const commitMessage = raw["commitMessage"];
+    if (typeof commitMessage === "string") {
+      return { kind: "applied", diff, impact, commitMessage };
+    }
+    return { kind: "proposed", diff, impact };
   }
 
   private metaOf(raw: Record<string, unknown>): TaskMeta {
@@ -73,9 +91,7 @@ export class TaskStore {
     const task: Task = {
       ...payload,
       status: "pending",
-      diff: null,
-      impact: null,
-      commitMessage: null,
+      artifact: { kind: "none" },
       id: `t${Date.now()}-${(this.sequence += 1)}`,
       dismissed: false,
       lock: null,
@@ -91,39 +107,35 @@ export class TaskStore {
     return task;
   }
 
-  update(payload: UpdatePayload): Task | null {
+  // Apply one update intent from the webview. A miss throws rather than returning null,
+  // so the caller works with a real Task; each intent touches only the fields it owns.
+  update(payload: UpdatePayload): Task {
     const tasks = this.read();
-    const task = tasks.find((item) => item.id === payload.id);
-    if (!task) {
-      return null;
+    const updatedTask = tasks.find((item) => item.id === payload.id);
+    if (!updatedTask) {
+      throw new TaskNotFoundException(payload.id);
     }
-    if (payload.status !== null) {
-      task.status = payload.status;
-    }
-    if (payload.diff !== null) {
-      task.diff = payload.diff;
-    }
-    if (payload.commitMessage !== null) {
-      task.commitMessage = payload.commitMessage;
-    }
-    if (payload.impact !== null) {
-      task.impact = payload.impact;
-    }
-    if (payload.dismissed !== null) {
-      task.dismissed = payload.dismissed;
-    }
-    if (payload.message !== null) {
-      const role = payload.role ?? "user";
-      task.messages.push({ role, text: payload.message, at: new Date().toISOString() });
-      // A user reply re-opens the auto gate so the processor gives Claude a fresh
-      // attempt (re-send after an error / asking for a revision).
-      if (role === "user") {
-        task.auto = null;
-      }
-    }
-    task.updatedAt = new Date().toISOString();
+    this.applyUpdate(updatedTask, payload);
+    updatedTask.updatedAt = new Date().toISOString();
     this.write(tasks);
-    return task;
+    return updatedTask;
+  }
+
+  private applyUpdate(task: Task, payload: UpdatePayload): void {
+    switch (payload.intent) {
+      case "set-status":
+        task.status = payload.status;
+        return;
+      case "reply":
+        task.messages.push({ role: "user", text: payload.message, at: new Date().toISOString() });
+        // A user reply re-opens the auto gate so the processor gives Claude a fresh
+        // attempt (re-send after an error / asking for a revision).
+        task.auto = null;
+        return;
+      case "dismiss":
+        task.dismissed = true;
+        return;
+    }
   }
 
   // Rewrite a chat request's prompt (the "edit message" affordance) and reset it to
@@ -132,50 +144,46 @@ export class TaskStore {
   // session). `usage` is deliberately left untouched so the accumulated token total
   // keeps climbing across the edit instead of resetting — the earlier run's tokens
   // were really spent, and the re-run adds onto them.
-  editRequest(id: string, description: string): Task | null {
+  editRequest(id: string, description: string): Task {
     const tasks = this.read();
-    const task = tasks.find((item) => item.id === id);
-    if (!task || task.type !== "request") {
-      return null;
+    const editRequestTask = tasks.find((item) => item.id === id);
+    if (!editRequestTask || editRequestTask.type !== "request") {
+      throw new RequestNotFoundException(id);
     }
-    task.spec = { description };
-    task.status = "pending";
-    task.diff = null;
-    task.impact = null;
-    task.commitMessage = null;
-    task.auto = null;
-    task.sessionId = null;
-    task.messages = [];
-    task.updatedAt = new Date().toISOString();
+    editRequestTask.spec = { description };
+    editRequestTask.status = "pending";
+    editRequestTask.artifact = { kind: "none" };
+    editRequestTask.auto = null;
+    editRequestTask.sessionId = null;
+    editRequestTask.messages = [];
+    editRequestTask.updatedAt = new Date().toISOString();
     this.write(tasks);
-    return task;
+    return editRequestTask;
   }
 
   // Edit a message already in a request's thread and re-run from that point: the text
   // is rewritten, every later turn (Claude's reply and anything after) is dropped, and
   // the task resets to re-run cold from the corrected conversation. `usage` is kept so
   // the token total keeps climbing across the edit. Only user messages are editable.
-  editMessage(id: string, index: number, text: string): Task | null {
+  editMessage(id: string, index: number, text: string): Task {
     const tasks = this.read();
-    const task = tasks.find((item) => item.id === id);
-    if (!task || task.type !== "request") {
-      return null;
+    const editMessageTask = tasks.find((item) => item.id === id);
+    if (!editMessageTask || editMessageTask.type !== "request") {
+      throw new RequestNotFoundException(id);
     }
-    const message = task.messages[index];
+    const message = editMessageTask.messages[index];
     if (!message || message.role !== "user") {
-      return null;
+      throw new RequestNotFoundException(id);
     }
     message.text = text;
-    task.messages = task.messages.slice(0, index + 1);
-    task.status = "pending";
-    task.diff = null;
-    task.impact = null;
-    task.commitMessage = null;
-    task.auto = null;
-    task.sessionId = null;
-    task.updatedAt = new Date().toISOString();
+    editMessageTask.messages = editMessageTask.messages.slice(0, index + 1);
+    editMessageTask.status = "pending";
+    editMessageTask.artifact = { kind: "none" };
+    editMessageTask.auto = null;
+    editMessageTask.sessionId = null;
+    editMessageTask.updatedAt = new Date().toISOString();
     this.write(tasks);
-    return task;
+    return editMessageTask;
   }
 
   delete(id: string): void {
@@ -193,14 +201,11 @@ export class TaskStore {
       switch (result.kind) {
         case "proposed":
           task.status = "proposed";
-          task.diff = result.diff;
-          task.impact = result.impact;
+          task.artifact = { kind: "proposed", diff: result.diff, impact: result.impact };
           return;
         case "applied":
           task.status = "applied";
-          task.diff = result.diff;
-          task.impact = result.impact;
-          task.commitMessage = result.commitMessage;
+          task.artifact = { kind: "applied", diff: result.diff, impact: result.impact, commitMessage: result.commitMessage };
           return;
         case "described":
           task.status = "applied";

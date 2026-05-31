@@ -241,17 +241,17 @@ export class AutoProcessor {
     this.activeRuns.delete(taskId);
     this.activities.delete(taskId);
     const stopped = this.stopRequestedIds.delete(taskId);
-    const result = this.results.take(taskId);
-    if (result) {
-      this.store.mergeResult(taskId, result);
-      if (result.kind === "described") {
-        const { file, behavior, text } = result.summary;
+    const runResult = this.results.take(taskId);
+    if (runResult) {
+      this.store.mergeResult(taskId, runResult);
+      if (runResult.kind === "described") {
+        const { file, behavior, text } = runResult.summary;
         this.summaries.write(file, behavior, text);
       }
     }
     // A resumed run that failed without producing a result may mean the session is
     // gone; drop it so the next attempt cold-starts (the task still carries its diff).
-    if (errorMessage && session.resume && !result) {
+    if (errorMessage && session.resume && !runResult) {
       this.store.mutate(taskId, (item) => {
         item.sessionId = null;
       });

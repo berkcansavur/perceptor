@@ -107,8 +107,8 @@ export class CoreService {
   async dispatch(action: string, payload: Record<string, unknown>): Promise<ApiResponse<unknown>> {
     const traceId = randomUUID();
     try {
-      const data = await this.commands.dispatch(action, payload);
-      return successResponse(data, traceId);
+      const commandResult = await this.commands.dispatch(action, payload);
+      return successResponse(commandResult, traceId);
     } catch (error) {
       return this.funnel.toErrorResponse(error, traceId);
     }

@@ -40,10 +40,10 @@ function endpointFiles(task: Task): string[] {
 // task has a diff: a first propose run is read-only on source, so it can't conflict.
 // Once a diff exists, those are the files an apply (or revision) will write.
 export function taskFootprint(task: Task): Set<string> {
-  if (!task.diff) {
+  if (task.artifact.kind === "none") {
     return new Set();
   }
-  const files = diffFiles(task.diff);
+  const files = diffFiles(task.artifact.diff);
   for (const file of endpointFiles(task)) {
     files.add(file);
   }

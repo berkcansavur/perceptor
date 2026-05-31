@@ -17,8 +17,11 @@
     "package": "bash scripts/pack-extension.sh",
     "install:local": "bash scripts/install-local.sh"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
-    "@types/node": "^18.19.0",
+    "@types/node": "^20.19.0",
     "typescript": "^5.4.0"
   }
 }

@@ -1,6 +1,7 @@
-import { CodingPreferences, EnqueuePayload, PreferredLanguage, TaskImpact, TaskStatus, UpdatePayload } from "../types";
+import { CodingPreferences, EnqueuePayload, PreferredLanguage, TaskStatus, UpdatePayload } from "../types";
 import { coerceKind } from "../task/taskCoercion";
 import { DEFAULT_CODING_PREFERENCES } from "../persistence/CodingPreferencesStore";
+import { UnsupportedActionException } from "../exception";
 
 // Boundary coercion: the webview RPC hands us untyped records, so here — and only
 // here — we turn them into complete, typed domain payloads.
@@ -32,29 +33,25 @@ function asLanguage(value: unknown, fallback: PreferredLanguage): PreferredLangu
   return text !== null && PREFERRED_LANGUAGES.includes(text as PreferredLanguage) ? (text as PreferredLanguage) : fallback;
 }
 
-function toImpact(value: unknown): TaskImpact | null {
-  const record = asRecord(value);
-  if (!record) {
-    return null;
-  }
-  return { risk: asString(record["risk"]) ?? "", notes: asStringList(record["notes"]) };
-}
-
 export function toEnqueuePayload(payload: Record<string, unknown>): EnqueuePayload {
   return coerceKind(payload["type"], payload["from"], payload["to"], payload["spec"]);
 }
 
+// The webview tags each update with its `intent`; parse it into the matching union member
+// so the store switches on a real discriminant, never sniffs which nullable field is set.
 export function toUpdatePayload(payload: Record<string, unknown>): UpdatePayload {
-  return {
-    id: asString(payload["id"]) ?? "",
-    status: asString(payload["status"]) as TaskStatus | null,
-    message: asString(payload["message"]),
-    diff: asString(payload["diff"]),
-    role: asString(payload["role"]),
-    commitMessage: asString(payload["commitMessage"]),
-    impact: toImpact(payload["impact"]),
-    dismissed: typeof payload["dismissed"] === "boolean" ? (payload["dismissed"] as boolean) : null,
-  };
+  const id = asString(payload["id"]) ?? "";
+  const intent = asString(payload["intent"]);
+  switch (intent) {
+    case "set-status":
+      return { id, intent: "set-status", status: (asString(payload["status"]) ?? "pending") as TaskStatus };
+    case "reply":
+      return { id, intent: "reply", message: asString(payload["message"]) ?? "" };
+    case "dismiss":
+      return { id, intent: "dismiss" };
+    default:
+      throw new UnsupportedActionException(`updateTask:${intent ?? "unknown"}`);
+  }
 }
 
 // Reconstruct a complete CodingPreferences from the raw record, falling back to the house

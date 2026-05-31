@@ -195,45 +195,18 @@ export class ApiClient implements Api {
     await this.call("enqueueTask", payload);
   }
 
-  // The three UI update intents, each building the full UpdatePayload (every field
-  // present, the untouched ones null) so the request stays a typed value, never a partial bag.
+  // The three UI update intents — each a tagged member of the UpdatePayload union that
+  // carries only the fields it sets, so the request is a precise value, not a nullable bag.
   async setTaskStatus(id: string, status: TaskStatus): Promise<void> {
-    await this.call("updateTask", {
-      id,
-      status,
-      message: null,
-      diff: null,
-      role: null,
-      commitMessage: null,
-      impact: null,
-      dismissed: null,
-    });
+    await this.call("updateTask", { id, intent: "set-status", status });
   }
 
   async replyToTask(id: string, message: string): Promise<void> {
-    await this.call("updateTask", {
-      id,
-      status: null,
-      message,
-      diff: null,
-      role: "user",
-      commitMessage: null,
-      impact: null,
-      dismissed: null,
-    });
+    await this.call("updateTask", { id, intent: "reply", message });
   }
 
   async archiveTask(id: string): Promise<void> {
-    await this.call("updateTask", {
-      id,
-      status: null,
-      message: null,
-      diff: null,
-      role: null,
-      commitMessage: null,
-      impact: null,
-      dismissed: true,
-    });
+    await this.call("updateTask", { id, intent: "dismiss" });
   }
 
   async deleteTask(id: string): Promise<void> {
