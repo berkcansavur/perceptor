@@ -71,14 +71,14 @@
     "watch": "node esbuild.js --watch",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
+    "package": "vsce package --no-dependencies",
     "vscode:prepublish": "node esbuild.js"
-  },
-  "dependencies": {
-    "repo-visualiser": "*"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.21.0",
+    "repo-visualiser": "*",
     "vitest": "^3.2.4"
   }
 }

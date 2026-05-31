@@ -1,14 +1,14 @@
-import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import { PayloadlessCommand } from "./Command";
+import type { WorkspaceService } from "../WorkspaceService";
 
-export class ReanalyzeCommand extends Command<Awaited<ReturnType<CoreService["reanalyze"]>>> {
+export class ReanalyzeCommand extends PayloadlessCommand<Awaited<ReturnType<WorkspaceService["reanalyze"]>>> {
   readonly action = "reanalyze";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: WorkspaceService) {
     super();
   }
 
-  handle(): ReturnType<CoreService["reanalyze"]> {
+  protected run(): ReturnType<WorkspaceService["reanalyze"]> {
     return this.service.reanalyze();
   }
 }

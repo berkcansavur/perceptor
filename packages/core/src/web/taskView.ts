@@ -1,4 +1,4 @@
-import type { ErrorHandling, Task } from "./types";
+import type { Task } from "./types";
 
 // Read helpers that narrow the discriminated Task by its type, so the UI asks "what
 // is this task's target file / spec description" without re-deriving the union
@@ -76,8 +76,4 @@ export function specDescription(task: Task): string {
 
 export function specSignature(task: Task): string {
   return task.type === "add-behavior" || task.type === "edit-behavior" ? task.spec.signature : "";
-}
-
-export function errorHandlingOf(task: Task): ErrorHandling | null {
-  return task.type === "add-behavior" ? task.spec.errorHandling : null;
 }

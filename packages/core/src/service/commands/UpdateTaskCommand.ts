@@ -1,15 +1,20 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { TaskService } from "../TaskService";
+import type { ApiRequest } from "../types";
 import { toUpdatePayload } from "./payloadCoercion";
 
-export class UpdateTaskCommand extends Command<Awaited<ReturnType<CoreService["updateTask"]>>> {
+export class UpdateTaskCommand extends Command<ApiRequest["updateTask"], Awaited<ReturnType<TaskService["updateTask"]>>> {
   readonly action = "updateTask";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: TaskService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["updateTask"]> {
-    return this.service.updateTask(toUpdatePayload(payload));
+  protected parse(payload: Record<string, unknown>): ApiRequest["updateTask"] {
+    return toUpdatePayload(payload);
+  }
+
+  protected run(request: ApiRequest["updateTask"]): ReturnType<TaskService["updateTask"]> {
+    return this.service.updateTask(request);
   }
 }

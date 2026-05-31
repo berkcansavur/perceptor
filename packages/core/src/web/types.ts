@@ -15,6 +15,7 @@ export type {
   // Discriminated task model — the single source of truth lives in the service layer.
   Task,
   TaskKind,
+  TaskStatus,
   TaskMessage,
   TaskImpact,
   TaskUsage,
@@ -30,6 +31,11 @@ export type {
   RequestSpec,
   DescribeBehaviorSpec,
   ErrorHandling,
+  ApiRequest,
+  CreatePayload,
+  EmptyRequest,
+  EnqueuePayload,
+  UpdatePayload,
 } from "../service/types";
 export type { ApiResponse, ApiError } from "../service/api";
 

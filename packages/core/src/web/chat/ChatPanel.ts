@@ -1,6 +1,6 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { Task, TaskMessage } from "../types";
+import type { Task, TaskMessage, TaskStatus } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
 import { specDescription } from "../taskView";
@@ -186,7 +186,7 @@ export class ChatPanel {
     input.value = "";
     this.autoGrow(input);
     if (this.selectedId) {
-      await this.api.updateTask(this.selectedId, { message: text, role: "user" });
+      await this.api.replyToTask(this.selectedId, text);
     } else {
       this.selectNewest = true;
       await this.api.sendRequest(text);
@@ -253,13 +253,13 @@ export class ChatPanel {
     return input ? input.value.trim() : "";
   }
 
-  private async setStatus(id: string, status: string): Promise<void> {
-    await this.api.updateTask(id, { status });
+  private async setStatus(id: string, status: TaskStatus): Promise<void> {
+    await this.api.setTaskStatus(id, status);
     void this.refresh(true);
   }
 
   private async archive(id: string): Promise<void> {
-    await this.api.updateTask(id, { dismissed: true });
+    await this.api.archiveTask(id);
     if (this.selectedId === id) {
       this.selectedId = null;
     }

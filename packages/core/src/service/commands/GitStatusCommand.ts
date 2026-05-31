@@ -1,14 +1,14 @@
-import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import { PayloadlessCommand } from "./Command";
+import type { WorkspaceService } from "../WorkspaceService";
 
-export class GitStatusCommand extends Command<Awaited<ReturnType<CoreService["gitStatus"]>>> {
+export class GitStatusCommand extends PayloadlessCommand<Awaited<ReturnType<WorkspaceService["gitStatus"]>>> {
   readonly action = "gitStatus";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: WorkspaceService) {
     super();
   }
 
-  handle(): ReturnType<CoreService["gitStatus"]> {
+  protected run(): ReturnType<WorkspaceService["gitStatus"]> {
     return this.service.gitStatus();
   }
 }

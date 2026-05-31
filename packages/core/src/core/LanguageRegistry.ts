@@ -4,14 +4,13 @@ import { JavaExtractor } from "./extractors/JavaExtractor";
 import { CSharpExtractor } from "./extractors/CSharpExtractor";
 import { TypeScriptExtractor } from "./extractors/TypeScriptExtractor";
 
-const WASM_DIRECTORY = path.join(require.resolve("tree-sitter-wasms/package.json"), "..", "out");
-
 // Registry of supported languages. Add a language by registering a definition
-// here (Open/Closed) — nothing else in the core changes.
+// here (Open/Closed) — nothing else in the core changes. Grammar .wasm files are resolved
+// against the injected directory, so a bundled host supplies its own shipped location.
 export class LanguageRegistry {
   private readonly byExtension = new Map<string, LanguageDefinition>();
 
-  constructor() {
+  constructor(private readonly wasmDirectory: string) {
     const typeScript = new TypeScriptExtractor();
     const definitions: readonly LanguageDefinition[] = [
       this.define("java", [".java"], "tree-sitter-java.wasm", new JavaExtractor()),
@@ -30,7 +29,7 @@ export class LanguageRegistry {
     wasmFile: string,
     extractor: LanguageExtractor
   ): LanguageDefinition {
-    return { id, extensions, wasmPath: path.join(WASM_DIRECTORY, wasmFile), extractor };
+    return { id, extensions, wasmPath: path.join(this.wasmDirectory, wasmFile), extractor };
   }
 
   forFile(filePath: string): LanguageDefinition | null {

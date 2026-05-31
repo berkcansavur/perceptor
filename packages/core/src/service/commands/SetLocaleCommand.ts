@@ -1,14 +1,19 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { PreferencesService } from "../PreferencesService";
+import type { ApiRequest } from "../types";
 
-export class SetLocaleCommand extends Command<Awaited<ReturnType<CoreService["setLocale"]>>> {
+export class SetLocaleCommand extends Command<ApiRequest["setLocale"], Awaited<ReturnType<PreferencesService["setLocale"]>>> {
   readonly action = "setLocale";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: PreferencesService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["setLocale"]> {
-    return this.service.setLocale(this.text(payload, "locale"));
+  protected parse(payload: Record<string, unknown>): ApiRequest["setLocale"] {
+    return { locale: this.text(payload, "locale") };
+  }
+
+  protected run(request: ApiRequest["setLocale"]): ReturnType<PreferencesService["setLocale"]> {
+    return this.service.setLocale(request.locale);
   }
 }

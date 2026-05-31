@@ -1,6 +1,6 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { Task } from "../types";
+import type { Task, TaskStatus } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
 import { usageBadge } from "../usageBadge";
@@ -39,7 +39,7 @@ export class TasksPanel {
     this.list.addEventListener("keydown", (event) => {
       const chat = closestEl<HTMLInputElement>(event.target, "[data-chat]");
       if (chat && event.key === "Enter" && chat.value.trim()) {
-        void this.update(chat.dataset.chat ?? "", { message: chat.value.trim(), role: "user" });
+        void this.reply(chat.dataset.chat ?? "", chat.value.trim());
         chat.value = "";
       }
     });
@@ -87,8 +87,18 @@ export class TasksPanel {
     this.open();
   }
 
-  private async update(id: string, payload: Record<string, unknown>): Promise<void> {
-    await this.api.updateTask(id, payload);
+  private async reply(id: string, message: string): Promise<void> {
+    await this.api.replyToTask(id, message);
+    void this.refresh(true);
+  }
+
+  private async archive(id: string): Promise<void> {
+    await this.api.archiveTask(id);
+    void this.refresh(true);
+  }
+
+  private async changeStatus(id: string, status: TaskStatus): Promise<void> {
+    await this.api.setTaskStatus(id, status);
     void this.refresh(true);
   }
 
@@ -117,7 +127,7 @@ export class TasksPanel {
     }
     const dismiss = closestEl<HTMLElement>(event.target, "[data-dismiss]");
     if (dismiss) {
-      void this.update(dismiss.dataset.dismiss ?? "", { dismissed: true });
+      void this.archive(dismiss.dataset.dismiss ?? "");
       return;
     }
     const cancel = closestEl<HTMLElement>(event.target, "[data-cancel]");
@@ -134,10 +144,10 @@ export class TasksPanel {
     const reject = closestEl<HTMLElement>(event.target, "[data-reject]");
     const copy = closestEl<HTMLElement>(event.target, "[data-copy]");
     if (approve) {
-      void this.update(approve.dataset.approve ?? "", { status: "approved" });
+      void this.changeStatus(approve.dataset.approve ?? "", "approved");
     }
     if (reject) {
-      void this.update(reject.dataset.reject ?? "", { status: "rejected" });
+      void this.changeStatus(reject.dataset.reject ?? "", "rejected");
     }
     if (copy) {
       const pre = this.list.querySelector<HTMLElement>(`.task-commit-msg[data-commit="${copy.dataset.copy}"]`);

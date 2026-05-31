@@ -1,14 +1,5 @@
 // Server-side domain types (tasks, scaffolding, auto-processor).
 
-export type TaskType =
-  | "move-behavior"
-  | "add-behavior"
-  | "edit-behavior"
-  | "create-file"
-  | "create-folder"
-  | "request"
-  | "describe-behavior";
-
 export type TaskStatus =
   | "pending"
   | "proposed"
@@ -193,6 +184,54 @@ export type UpdatePayload = {
   commitMessage: string | null;
   impact: TaskImpact | null;
   dismissed: boolean | null;
+}
+
+// Scaffolding request: create a file or folder. kind is null only when the wire sent
+// neither — the service rejects it; the other fields are null when not supplied.
+export type CreatePayload = {
+  kind: "file" | "folder" | null;
+  dir: string | null;
+  name: string | null;
+  template: string | null;
+  typeName: string | null;
+}
+
+// An action that carries no request body. A concrete empty object (not `unknown`,
+// not an index bag) so callers must pass `{}` and nothing else type-checks into it.
+export type EmptyRequest = Record<string, never>;
+
+// The request contract: every RPC action mapped to the EXACT shape its caller must send.
+// The mirror of ApiContract (which maps each action to its result), so the channel is
+// typed end to end — the webview can't post a malformed request, and each host Command
+// binds its parsed input to ApiRequest[action]. The wire still arrives untyped (IPC), so
+// each Command.parse validates a raw record into its entry here — but past that single
+// boundary nothing is `Record<string, unknown>`.
+export type ApiRequest = {
+  graph: EmptyRequest;
+  meta: EmptyRequest;
+  reanalyze: EmptyRequest;
+  fileTemplates: EmptyRequest;
+  tasks: EmptyRequest;
+  autoStatus: EmptyRequest;
+  autoActivity: EmptyRequest;
+  getPreferences: EmptyRequest;
+  gitStatus: EmptyRequest;
+  source: { file: string; from: number; to: number };
+  browse: { path: string | null };
+  open: { path: string };
+  enqueueTask: EnqueuePayload;
+  updateTask: UpdatePayload;
+  editRequest: { id: string; description: string };
+  editMessage: { id: string; index: number; description: string };
+  deleteTask: { id: string };
+  savePreferences: CodingPreferences;
+  behaviorSummary: { file: string; behavior: string };
+  complexity: { code: string; name: string };
+  create: CreatePayload;
+  setAuto: { enabled: boolean };
+  stopProcessing: { taskId: string | null };
+  setLocale: { locale: string };
+  openFile: { file: string; line: number };
 }
 
 // Host-provided capability the service can't implement itself: opening a file in the

@@ -1,14 +1,19 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { AnalysisService } from "../AnalysisService";
+import type { ApiRequest } from "../types";
 
-export class ComplexityCommand extends Command<Awaited<ReturnType<CoreService["complexity"]>>> {
+export class ComplexityCommand extends Command<ApiRequest["complexity"], Awaited<ReturnType<AnalysisService["complexity"]>>> {
   readonly action = "complexity";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: AnalysisService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["complexity"]> {
-    return this.service.complexity(this.text(payload, "code"), this.text(payload, "name"));
+  protected parse(payload: Record<string, unknown>): ApiRequest["complexity"] {
+    return { code: this.text(payload, "code"), name: this.text(payload, "name") };
+  }
+
+  protected run(request: ApiRequest["complexity"]): ReturnType<AnalysisService["complexity"]> {
+    return this.service.complexity(request.code, request.name);
   }
 }

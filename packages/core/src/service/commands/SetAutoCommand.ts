@@ -1,14 +1,19 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { TaskService } from "../TaskService";
+import type { ApiRequest } from "../types";
 
-export class SetAutoCommand extends Command<Awaited<ReturnType<CoreService["setAuto"]>>> {
+export class SetAutoCommand extends Command<ApiRequest["setAuto"], Awaited<ReturnType<TaskService["setAuto"]>>> {
   readonly action = "setAuto";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: TaskService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["setAuto"]> {
-    return this.service.setAuto(this.flag(payload, "enabled"));
+  protected parse(payload: Record<string, unknown>): ApiRequest["setAuto"] {
+    return { enabled: this.flag(payload, "enabled") };
+  }
+
+  protected run(request: ApiRequest["setAuto"]): ReturnType<TaskService["setAuto"]> {
+    return this.service.setAuto(request.enabled);
   }
 }

@@ -1,16 +1,21 @@
-import { analyze, Graph } from "../../core";
+import { analyze, type AnalyzerAssets, Graph } from "../../core";
 import { FileWatcher } from "./FileWatcher";
 
 // Holds the mutable "which repo are we viewing" state: current root, the last
 // analyzed graph (in memory), a version (bumped on every analyze) and a file
-// watcher that re-analyzes on edits.
+// watcher that re-analyzes on edits. The analyzer assets are injected so the running
+// host (bundled extension or CLI) controls where the .wasm files are found.
 export class RepoSession {
   private root: string;
   private version = 0;
   private lastGraph: Graph | null = null;
   private readonly watcher: FileWatcher;
 
-  constructor(initialRoot: string, private readonly onChange: (() => void) | null) {
+  constructor(
+    initialRoot: string,
+    private readonly onChange: (() => void) | null,
+    private readonly assets: AnalyzerAssets
+  ) {
     this.root = initialRoot;
     this.watcher = new FileWatcher(() => {
       void this.reanalyzeSilently();
@@ -31,7 +36,7 @@ export class RepoSession {
   }
 
   async reanalyze(): Promise<Graph> {
-    this.lastGraph = await analyze(this.root);
+    this.lastGraph = await analyze(this.root, this.assets);
     this.version += 1;
     return this.lastGraph;
   }
@@ -44,7 +49,7 @@ export class RepoSession {
 
   private async reanalyzeSilently(): Promise<void> {
     try {
-      this.lastGraph = await analyze(this.root);
+      this.lastGraph = await analyze(this.root, this.assets);
       this.version += 1;
       if (this.onChange) {
         this.onChange();

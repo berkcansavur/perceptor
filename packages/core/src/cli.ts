@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as path from "path";
 import { analyzeToFile } from "./core";
+import { resolveInstalledAssets } from "./core/installedAssets";
 
 const HELP_TEXT = `repo-visualiser — dependency/behavior map analyzer
 
@@ -27,7 +28,7 @@ async function main(): Promise<void> {
   const rootDirectory = positional ? path.resolve(positional) : process.cwd();
 
   process.stdout.write(`Analyzing ${rootDirectory} …\n`);
-  const { graph, outputPath } = await analyzeToFile(rootDirectory);
+  const { graph, outputPath } = await analyzeToFile(rootDirectory, resolveInstalledAssets());
   process.stdout.write(
     `Found ${graph.stats.classes} classes, ${graph.stats.edges} edges across ${graph.stats.files} files.\n`
   );

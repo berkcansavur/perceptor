@@ -1,6 +1,6 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { TemplateRegistry } from "../types";
+import type { CreatePayload, TemplateRegistry } from "../types";
 import { byId } from "../dom";
 import { t } from "../i18n";
 
@@ -131,13 +131,15 @@ export class CreateForm {
       this.fail(t("addbeh.error"));
       return;
     }
-    const body: Record<string, string> = { kind: this.target.kind, dir: this.dirInput.value.trim(), name };
-    if (this.target.kind === "file") {
-      body["template"] = this.templateSelect.value;
-      if (NAMED_TEMPLATES.has(this.templateSelect.value)) {
-        body["typeName"] = this.typeNameInput.value.trim() || this.fileBaseName();
-      }
-    }
+    const isFile = this.target.kind === "file";
+    const hasNamedTemplate = isFile && NAMED_TEMPLATES.has(this.templateSelect.value);
+    const body: CreatePayload = {
+      kind: this.target.kind === "folder" ? "folder" : "file",
+      dir: this.dirInput.value.trim(),
+      name,
+      template: isFile ? this.templateSelect.value : null,
+      typeName: hasNamedTemplate ? this.typeNameInput.value.trim() || this.fileBaseName() : null,
+    };
     try {
       await this.api.create(body);
     } catch {

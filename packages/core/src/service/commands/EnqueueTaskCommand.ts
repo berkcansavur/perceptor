@@ -1,15 +1,20 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { TaskService } from "../TaskService";
+import type { ApiRequest } from "../types";
 import { toEnqueuePayload } from "./payloadCoercion";
 
-export class EnqueueTaskCommand extends Command<Awaited<ReturnType<CoreService["enqueueTask"]>>> {
+export class EnqueueTaskCommand extends Command<ApiRequest["enqueueTask"], Awaited<ReturnType<TaskService["enqueueTask"]>>> {
   readonly action = "enqueueTask";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: TaskService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["enqueueTask"]> {
-    return this.service.enqueueTask(toEnqueuePayload(payload));
+  protected parse(payload: Record<string, unknown>): ApiRequest["enqueueTask"] {
+    return toEnqueuePayload(payload);
+  }
+
+  protected run(request: ApiRequest["enqueueTask"]): ReturnType<TaskService["enqueueTask"]> {
+    return this.service.enqueueTask(request);
   }
 }

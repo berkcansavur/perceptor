@@ -1,27 +1,12 @@
 // Turns one line of `claude --output-format stream-json` into a short, human
 // "what Claude is doing right now" label — its narration text, or the tool it just
 // invoked. Returns null for lines that carry no user-facing activity.
+//
+// The lines are external process output we don't own, so a parsed line is genuinely an
+// unknown object: we keep it as a raw record and read each field through a presence-checked
+// accessor into clean typed values — no optional `?: unknown` shape pretending to know it.
 
 const MAX_LENGTH = 100;
-
-type StreamToolInput = {
-  file_path?: unknown;
-  path?: unknown;
-  pattern?: unknown;
-  description?: unknown;
-}
-
-type StreamContentItem = {
-  type?: unknown;
-  text?: unknown;
-  name?: unknown;
-  input?: StreamToolInput;
-}
-
-type StreamEvent = {
-  type?: unknown;
-  message?: { content?: unknown };
-}
 
 export type StreamUsage = {
   inputTokens: number;
@@ -31,79 +16,84 @@ export type StreamUsage = {
   costUsd: number;
 }
 
-type ResultUsage = {
-  input_tokens?: unknown;
-  output_tokens?: unknown;
-  cache_read_input_tokens?: unknown;
-  cache_creation_input_tokens?: unknown;
+function parseLine(line: string): Record<string, unknown> | null {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    return asRecord(JSON.parse(trimmed));
+  } catch {
+    return null;
+  }
 }
 
-type ResultEvent = {
-  type?: unknown;
-  total_cost_usd?: unknown;
-  usage?: ResultUsage;
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function asNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
 // The final `result` event of a stream-json run carries the run's cumulative token
 // usage and cost. Returns null for any other line. One result event per run.
 export function usageFromStreamLine(line: string): StreamUsage | null {
-  const trimmed = line.trim();
-  if (!trimmed) {
+  const event = parseLine(line);
+  if (!event || event["type"] !== "result") {
     return null;
   }
-  let event: ResultEvent;
-  try {
-    event = JSON.parse(trimmed) as ResultEvent;
-  } catch {
-    return null;
-  }
-  if (!event || event.type !== "result" || !event.usage) {
+  const usage = asRecord(event["usage"]);
+  if (!usage) {
     return null;
   }
   return {
-    inputTokens: asNumber(event.usage.input_tokens),
-    outputTokens: asNumber(event.usage.output_tokens),
-    cacheReadTokens: asNumber(event.usage.cache_read_input_tokens),
-    cacheCreationTokens: asNumber(event.usage.cache_creation_input_tokens),
-    costUsd: asNumber(event.total_cost_usd),
+    inputTokens: asNumber(usage["input_tokens"]),
+    outputTokens: asNumber(usage["output_tokens"]),
+    cacheReadTokens: asNumber(usage["cache_read_input_tokens"]),
+    cacheCreationTokens: asNumber(usage["cache_creation_input_tokens"]),
+    costUsd: asNumber(event["total_cost_usd"]),
   };
 }
 
 export function activityFromStreamLine(line: string): string | null {
-  const trimmed = line.trim();
-  if (!trimmed) {
+  const event = parseLine(line);
+  if (!event || event["type"] !== "assistant") {
     return null;
   }
-  let event: StreamEvent;
-  try {
-    event = JSON.parse(trimmed) as StreamEvent;
-  } catch {
+  const message = asRecord(event["message"]);
+  if (!message) {
     return null;
   }
-  if (!event || event.type !== "assistant" || !event.message) {
-    return null;
-  }
-  const content = event.message.content;
-  if (!Array.isArray(content)) {
-    return null;
-  }
-  for (const item of content as StreamContentItem[]) {
-    if (item && item.type === "tool_use") {
-      return labelForTool(String(item.name ?? ""), item.input ?? {});
+  return labelForContent(asArray(message["content"]));
+}
+
+function labelForContent(content: unknown[]): string | null {
+  for (const raw of content) {
+    const item = asRecord(raw);
+    if (!item) {
+      continue;
     }
-    if (item && item.type === "text" && typeof item.text === "string" && item.text.trim()) {
-      return truncate(item.text.trim());
+    if (item["type"] === "tool_use") {
+      return labelForTool(asString(item["name"]), asRecord(item["input"]) ?? {});
+    }
+    if (item["type"] === "text" && asString(item["text"]).trim()) {
+      return truncate(asString(item["text"]).trim());
     }
   }
   return null;
 }
 
-function labelForTool(name: string, input: StreamToolInput): string {
-  const target = basename(asString(input.file_path) || asString(input.path));
+function labelForTool(name: string, input: Record<string, unknown>): string {
+  const target = basename(asString(input["file_path"]) || asString(input["path"]));
   switch (name) {
     case "Read":
       return target ? `Reading ${target}` : "Reading files";
@@ -112,10 +102,10 @@ function labelForTool(name: string, input: StreamToolInput): string {
     case "NotebookEdit":
       return target ? `Editing ${target}` : "Editing files";
     case "Bash":
-      return asString(input.description) ? truncate(asString(input.description)) : "Running a command";
+      return asString(input["description"]) ? truncate(asString(input["description"])) : "Running a command";
     case "Grep":
     case "Glob":
-      return asString(input.pattern) ? `Searching “${truncate(asString(input.pattern), 40)}”` : "Searching the repo";
+      return asString(input["pattern"]) ? `Searching “${truncate(asString(input["pattern"]), 40)}”` : "Searching the repo";
     case "Task":
       return "Exploring the codebase";
     case "TodoWrite":
@@ -123,10 +113,6 @@ function labelForTool(name: string, input: StreamToolInput): string {
     default:
       return name ? `${name}…` : "Working…";
   }
-}
-
-function asString(value: unknown): string {
-  return typeof value === "string" ? value : "";
 }
 
 function basename(filePath: string): string {

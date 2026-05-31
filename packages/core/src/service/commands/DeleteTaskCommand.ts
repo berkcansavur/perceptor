@@ -1,14 +1,19 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { TaskService } from "../TaskService";
+import type { ApiRequest } from "../types";
 
-export class DeleteTaskCommand extends Command<Awaited<ReturnType<CoreService["deleteTask"]>>> {
+export class DeleteTaskCommand extends Command<ApiRequest["deleteTask"], Awaited<ReturnType<TaskService["deleteTask"]>>> {
   readonly action = "deleteTask";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: TaskService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["deleteTask"]> {
-    return this.service.deleteTask(this.text(payload, "id"));
+  protected parse(payload: Record<string, unknown>): ApiRequest["deleteTask"] {
+    return { id: this.text(payload, "id") };
+  }
+
+  protected run(request: ApiRequest["deleteTask"]): ReturnType<TaskService["deleteTask"]> {
+    return this.service.deleteTask(request.id);
   }
 }

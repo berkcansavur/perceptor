@@ -1,6 +1,7 @@
 import * as path from "path";
 import { describe, expect, it } from "vitest";
 import { analyze } from "../src/core/index";
+import { resolveInstalledAssets } from "../src/core/installedAssets";
 import type { Graph } from "../src/core/types";
 
 const FIXTURES_DIRECTORY = path.resolve(__dirname, "fixtures");
@@ -12,7 +13,7 @@ interface Summary {
 }
 
 async function summarize(language: string): Promise<Summary> {
-  const graph = await analyze(path.join(FIXTURES_DIRECTORY, language));
+  const graph = await analyze(path.join(FIXTURES_DIRECTORY, language), resolveInstalledAssets());
   const nameById = new Map(graph.nodes.map((node) => [node.id, node.name]));
   const kinds = graph.nodes.map((node) => `${node.kind}:${node.name}`).sort();
   const edges = graph.edges.map((edge) => `${nameById.get(edge.source)}->${nameById.get(edge.target)}`).sort();

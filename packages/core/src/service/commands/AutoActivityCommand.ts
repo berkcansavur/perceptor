@@ -1,14 +1,14 @@
-import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import { PayloadlessCommand } from "./Command";
+import type { TaskService } from "../TaskService";
 
-export class AutoActivityCommand extends Command<Awaited<ReturnType<CoreService["autoActivity"]>>> {
+export class AutoActivityCommand extends PayloadlessCommand<Awaited<ReturnType<TaskService["autoActivity"]>>> {
   readonly action = "autoActivity";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: TaskService) {
     super();
   }
 
-  handle(): ReturnType<CoreService["autoActivity"]> {
+  protected run(): ReturnType<TaskService["autoActivity"]> {
     return this.service.autoActivity();
   }
 }

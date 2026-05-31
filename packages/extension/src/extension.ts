@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { createCoreService, CoreService, type FileOpener } from "repo-visualiser/dist/service";
+import { createCoreService, CoreService, type AnalyzerAssets, type FileOpener } from "repo-visualiser/dist/service";
 import { VisualiserPanel } from "./visualiserPanel";
 
 // The host capability the core can't provide: reveal a file in the editor at a line.
@@ -16,8 +16,16 @@ const editorFileOpener: FileOpener = {
 let output: vscode.OutputChannel;
 let core: CoreService | undefined;
 
+// The bundle and its assets ship together: extension.js sits in dist/, so the webview
+// build and the tree-sitter .wasm files are resolved relative to it (__dirname), never
+// from node_modules — that's what makes the packaged .vsix self-contained.
 function webDirectory(): string {
-  return path.join(path.dirname(require.resolve("repo-visualiser/package.json")), "dist", "web");
+  return path.join(__dirname, "web");
+}
+
+function analyzerAssets(): AnalyzerAssets {
+  const wasmDirectory = path.join(__dirname, "wasm");
+  return { wasmDirectory, runtimeWasm: path.join(wasmDirectory, "tree-sitter.wasm") };
 }
 
 async function openCommand(): Promise<void> {
@@ -30,7 +38,7 @@ async function openCommand(): Promise<void> {
   if (!core) {
     const settings = vscode.workspace.getConfiguration("repoVisualiser");
     process.env["VISUALISE_CLAUDE_BIN"] = settings.get<string>("claudePath", "claude");
-    const service = createCoreService(folder.uri.fsPath, null, editorFileOpener);
+    const service = createCoreService(folder.uri.fsPath, null, editorFileOpener, analyzerAssets());
     try {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Repo Visualiser: analyzing…" },

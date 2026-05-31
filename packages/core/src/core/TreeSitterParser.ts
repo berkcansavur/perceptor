@@ -7,9 +7,13 @@ export class TreeSitterParser {
   private parser: Parser | null = null;
   private readonly grammars = new Map<string, Parser.Language>();
 
+  // `runtimeWasm` is the absolute path to web-tree-sitter's tree-sitter.wasm; a bundled
+  // host ships it and points here, instead of the library guessing a node_modules path.
+  constructor(private readonly runtimeWasm: string) {}
+
   private async ready(): Promise<Parser> {
     if (!this.parser) {
-      await Parser.init();
+      await Parser.init({ locateFile: () => this.runtimeWasm });
       this.parser = new Parser();
     }
     return this.parser;

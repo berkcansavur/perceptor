@@ -1,14 +1,19 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { WorkspaceService } from "../WorkspaceService";
+import type { ApiRequest } from "../types";
 
-export class OpenFileCommand extends Command<Awaited<ReturnType<CoreService["openFile"]>>> {
+export class OpenFileCommand extends Command<ApiRequest["openFile"], Awaited<ReturnType<WorkspaceService["openFile"]>>> {
   readonly action = "openFile";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: WorkspaceService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["openFile"]> {
-    return this.service.openFile(this.text(payload, "file"), this.count(payload, "line", 1));
+  protected parse(payload: Record<string, unknown>): ApiRequest["openFile"] {
+    return { file: this.text(payload, "file"), line: this.count(payload, "line", 1) };
+  }
+
+  protected run(request: ApiRequest["openFile"]): ReturnType<WorkspaceService["openFile"]> {
+    return this.service.openFile(request.file, request.line);
   }
 }

@@ -1,6 +1,16 @@
 // Domain model for the dependency/behavior graph. Everything is readonly and
 // fully typed — no implicit any, no undefined leaks.
 
+// Where the analyzer finds its tree-sitter assets at runtime. Injected (not resolved
+// from node_modules) so a bundled host — the packaged VS Code extension — can point at
+// the .wasm files it shipped inside its own directory.
+export type AnalyzerAssets = {
+  // Directory holding the per-language grammar files (tree-sitter-<lang>.wasm).
+  wasmDirectory: string;
+  // The web-tree-sitter runtime wasm (tree-sitter.wasm) that Parser.init loads.
+  runtimeWasm: string;
+}
+
 export type Visibility = "public" | "protected" | "private" | "internal" | "package";
 export type DependencySource = "constructor" | "field";
 export type ClassKind =

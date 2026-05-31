@@ -1,5 +1,6 @@
 import type {
   ApiError,
+  ApiRequest,
   ApiResponse,
   AutoActivity,
   AutoStatus,
@@ -7,9 +8,12 @@ import type {
   BrowseData,
   CodingPreferences,
   ComplexityReport,
+  CreatePayload,
+  EnqueuePayload,
   Graph,
   MetaResponse,
   Task,
+  TaskStatus,
   TemplateRegistry,
 } from "../types";
 
@@ -23,10 +27,11 @@ declare function acquireVsCodeApi(): VsCodeApi;
 
 const vscode = acquireVsCodeApi();
 
-// The RPC contract: each action name mapped to the data its success payload carries.
-// This is the single source that makes `call` typed end to end — the action is a key of
-// this map (no loose string), and the resolved value is `ApiContract[action]`. The host's
-// CoreService methods return exactly these shapes.
+// The RPC result contract: each action name mapped to the data its success payload
+// carries. With ApiRequest (the request mirror), this makes `call` typed end to end — the
+// action is a key of both maps (no loose string), the payload must be `ApiRequest[action]`,
+// and the resolved value is `ApiContract[action]`. The host's CoreService methods return
+// exactly these shapes.
 type ApiContract = {
   graph: Graph | null;
   meta: MetaResponse;
@@ -67,8 +72,10 @@ export interface Api {
   browse(targetPath: string | null): Promise<BrowseData>;
   open(path: string): Promise<ApiContract["open"]>;
   tasks(): Promise<Task[]>;
-  enqueueTask(payload: Record<string, unknown>): Promise<void>;
-  updateTask(id: string, payload: Record<string, unknown>): Promise<void>;
+  enqueueTask(payload: EnqueuePayload): Promise<void>;
+  setTaskStatus(id: string, status: TaskStatus): Promise<void>;
+  replyToTask(id: string, message: string): Promise<void>;
+  archiveTask(id: string): Promise<void>;
   deleteTask(id: string): Promise<void>;
   editRequest(id: string, description: string): Promise<void>;
   editMessage(id: string, index: number, text: string): Promise<void>;
@@ -84,7 +91,7 @@ export interface Api {
     line: string;
     endLine: string;
   }): Promise<void>;
-  create(payload: Record<string, string>): Promise<void>;
+  create(payload: CreatePayload): Promise<void>;
   autoStatus(): Promise<AutoStatus>;
   autoActivity(): Promise<AutoActivity[]>;
   setAuto(enabled: boolean): Promise<void>;
@@ -113,7 +120,8 @@ export class ApiCallError extends Error {
 // Each call is an `{ id, action, payload }` request correlated to an `{ id, result }`
 // response whose `result` is an ApiResponse envelope. `call` unwraps it: resolves with
 // `data` on success, rejects with an ApiCallError on failure, so callers work in plain
-// values + try/catch. `action` is keyed to ApiContract, so the channel is fully typed.
+// values + try/catch. `action` is keyed to ApiContract / ApiRequest, so both the request
+// payload and the resolved result are fully typed.
 export class ApiClient implements Api {
   private sequence = 0;
   private readonly pending = new Map<number, (response: unknown) => void>();
@@ -133,7 +141,7 @@ export class ApiClient implements Api {
 
   private call<Action extends keyof ApiContract>(
     action: Action,
-    payload: Record<string, unknown> = {}
+    payload: ApiRequest[Action]
   ): Promise<ApiContract[Action]> {
     const id = ++this.sequence;
     return new Promise<ApiContract[Action]>((resolve, reject) => {
@@ -150,19 +158,19 @@ export class ApiClient implements Api {
   }
 
   graph(): Promise<Graph | null> {
-    return this.call("graph");
+    return this.call("graph", {});
   }
 
   meta(): Promise<MetaResponse> {
-    return this.call("meta");
+    return this.call("meta", {});
   }
 
   async reanalyze(): Promise<void> {
-    await this.call("reanalyze");
+    await this.call("reanalyze", {});
   }
 
   fileTemplates(): Promise<TemplateRegistry> {
-    return this.call("fileTemplates");
+    return this.call("fileTemplates", {});
   }
 
   async source(file: string, from: string, to: string): Promise<string> {
@@ -179,16 +187,53 @@ export class ApiClient implements Api {
   }
 
   async tasks(): Promise<Task[]> {
-    const { tasks } = await this.call("tasks");
+    const { tasks } = await this.call("tasks", {});
     return tasks;
   }
 
-  async enqueueTask(payload: Record<string, unknown>): Promise<void> {
+  async enqueueTask(payload: EnqueuePayload): Promise<void> {
     await this.call("enqueueTask", payload);
   }
 
-  async updateTask(id: string, payload: Record<string, unknown>): Promise<void> {
-    await this.call("updateTask", { id, ...payload });
+  // The three UI update intents, each building the full UpdatePayload (every field
+  // present, the untouched ones null) so the request stays a typed value, never a partial bag.
+  async setTaskStatus(id: string, status: TaskStatus): Promise<void> {
+    await this.call("updateTask", {
+      id,
+      status,
+      message: null,
+      diff: null,
+      role: null,
+      commitMessage: null,
+      impact: null,
+      dismissed: null,
+    });
+  }
+
+  async replyToTask(id: string, message: string): Promise<void> {
+    await this.call("updateTask", {
+      id,
+      status: null,
+      message,
+      diff: null,
+      role: "user",
+      commitMessage: null,
+      impact: null,
+      dismissed: null,
+    });
+  }
+
+  async archiveTask(id: string): Promise<void> {
+    await this.call("updateTask", {
+      id,
+      status: null,
+      message: null,
+      diff: null,
+      role: null,
+      commitMessage: null,
+      impact: null,
+      dismissed: true,
+    });
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -208,12 +253,12 @@ export class ApiClient implements Api {
   }
 
   async getPreferences(): Promise<CodingPreferences> {
-    const { preferences } = await this.call("getPreferences");
+    const { preferences } = await this.call("getPreferences", {});
     return preferences;
   }
 
   async savePreferences(preferences: CodingPreferences): Promise<void> {
-    await this.call("savePreferences", preferences as unknown as Record<string, unknown>);
+    await this.call("savePreferences", preferences);
   }
 
   // Free-form requirement → a `request` task the skill implements; enqueue on the
@@ -248,16 +293,16 @@ export class ApiClient implements Api {
     });
   }
 
-  async create(payload: Record<string, string>): Promise<void> {
+  async create(payload: CreatePayload): Promise<void> {
     await this.call("create", payload);
   }
 
   autoStatus(): Promise<AutoStatus> {
-    return this.call("autoStatus");
+    return this.call("autoStatus", {});
   }
 
   async autoActivity(): Promise<AutoActivity[]> {
-    const { activities } = await this.call("autoActivity");
+    const { activities } = await this.call("autoActivity", {});
     return activities;
   }
 
@@ -266,9 +311,9 @@ export class ApiClient implements Api {
   }
 
   // Interrupt a Claude run (stops burning tokens). With a taskId, only that task's
-  // run is killed; without one, every in-flight run is.
+  // run is killed; with null, every in-flight run is.
   async stopProcessing(taskId: string | null): Promise<void> {
-    await this.call("stopProcessing", taskId ? { taskId } : {});
+    await this.call("stopProcessing", { taskId });
   }
 
   async setLocale(locale: string): Promise<void> {
@@ -276,7 +321,7 @@ export class ApiClient implements Api {
   }
 
   gitStatus(): Promise<ApiContract["gitStatus"]> {
-    return this.call("gitStatus");
+    return this.call("gitStatus", {});
   }
 
   // Opens a file in the editor (the core resolves the path; the host's injected

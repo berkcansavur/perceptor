@@ -1,14 +1,14 @@
-import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import { PayloadlessCommand } from "./Command";
+import type { PreferencesService } from "../PreferencesService";
 
-export class GetPreferencesCommand extends Command<Awaited<ReturnType<CoreService["getPreferences"]>>> {
+export class GetPreferencesCommand extends PayloadlessCommand<Awaited<ReturnType<PreferencesService["getPreferences"]>>> {
   readonly action = "getPreferences";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: PreferencesService) {
     super();
   }
 
-  handle(): ReturnType<CoreService["getPreferences"]> {
+  protected run(): ReturnType<PreferencesService["getPreferences"]> {
     return this.service.getPreferences();
   }
 }

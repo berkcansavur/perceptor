@@ -6,25 +6,27 @@ import { FileWalker } from "./FileWalker";
 import { EdgeBuilder } from "./EdgeBuilder";
 import { FileNodeRegistry } from "./FileNodeRegistry";
 import { GraphBuilder } from "./GraphBuilder";
-import { Graph } from "./types";
+import { AnalyzerAssets, Graph } from "./types";
 
 export * from "./types";
 export { GraphBuilder } from "./GraphBuilder";
 export { LanguageRegistry } from "./LanguageRegistry";
 
-function createGraphBuilder(): GraphBuilder {
-  const registry = new LanguageRegistry();
+// Assets are injected (never resolved from node_modules here) so this module carries no
+// runtime path assumption — a bundled host passes the location of its shipped .wasm files.
+function createGraphBuilder(assets: AnalyzerAssets): GraphBuilder {
+  const languageRegistry = new LanguageRegistry(assets.wasmDirectory);
   return new GraphBuilder(
-    new TreeSitterParser(),
-    registry,
-    new FileWalker(registry),
+    new TreeSitterParser(assets.runtimeWasm),
+    languageRegistry,
+    new FileWalker(languageRegistry),
     new EdgeBuilder(),
     new FileNodeRegistry()
   );
 }
 
-export async function analyze(rootDirectory: string): Promise<Graph> {
-  return createGraphBuilder().analyze(rootDirectory);
+export async function analyze(rootDirectory: string, assets: AnalyzerAssets): Promise<Graph> {
+  return createGraphBuilder(assets).analyze(rootDirectory);
 }
 
 export function outputPath(rootDirectory: string): string {
@@ -32,9 +34,10 @@ export function outputPath(rootDirectory: string): string {
 }
 
 export async function analyzeToFile(
-  rootDirectory: string
+  rootDirectory: string,
+  assets: AnalyzerAssets
 ): Promise<{ graph: Graph; outputPath: string }> {
-  const graph = await analyze(rootDirectory);
+  const graph = await analyze(rootDirectory, assets);
   const target = outputPath(rootDirectory);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, JSON.stringify(graph, null, 2));

@@ -1,14 +1,19 @@
 import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import type { TaskService } from "../TaskService";
+import type { ApiRequest } from "../types";
 
-export class StopProcessingCommand extends Command<Awaited<ReturnType<CoreService["stopProcessing"]>>> {
+export class StopProcessingCommand extends Command<ApiRequest["stopProcessing"], Awaited<ReturnType<TaskService["stopProcessing"]>>> {
   readonly action = "stopProcessing";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: TaskService) {
     super();
   }
 
-  handle(payload: Record<string, unknown>): ReturnType<CoreService["stopProcessing"]> {
-    return this.service.stopProcessing(this.optionalText(payload, "taskId"));
+  protected parse(payload: Record<string, unknown>): ApiRequest["stopProcessing"] {
+    return { taskId: this.optionalText(payload, "taskId") };
+  }
+
+  protected run(request: ApiRequest["stopProcessing"]): ReturnType<TaskService["stopProcessing"]> {
+    return this.service.stopProcessing(request.taskId);
   }
 }

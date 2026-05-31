@@ -109,7 +109,7 @@ export class BehaviorForm {
         description,
         signature: this.signatureInput.value.trim(),
         errorHandling: {
-          mode: this.modeSelect.value,
+          mode: this.modeSelect.value === "nullable" ? "nullable" : this.modeSelect.value === "default" ? "default" : "throw",
           exception: this.modeSelect.value === "throw" ? this.exceptionInput.value.trim() : "",
         },
       },

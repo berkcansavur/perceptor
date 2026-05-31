@@ -1,14 +1,14 @@
-import { Command } from "./Command";
-import type { CoreService } from "../CoreService";
+import { PayloadlessCommand } from "./Command";
+import type { WorkspaceService } from "../WorkspaceService";
 
-export class GraphCommand extends Command<Awaited<ReturnType<CoreService["graph"]>>> {
+export class GraphCommand extends PayloadlessCommand<Awaited<ReturnType<WorkspaceService["graph"]>>> {
   readonly action = "graph";
 
-  constructor(private readonly service: CoreService) {
+  constructor(private readonly service: WorkspaceService) {
     super();
   }
 
-  handle(): ReturnType<CoreService["graph"]> {
+  protected run(): ReturnType<WorkspaceService["graph"]> {
     return this.service.graph();
   }
 }

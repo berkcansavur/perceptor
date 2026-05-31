@@ -1,6 +1,6 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { Task } from "../types";
+import type { Task, TaskStatus } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
 import { buildChangeTree, sliceMethod, type ChangeFolder, type ChangeStatus, type FileChange } from "./changeTree";
@@ -133,13 +133,13 @@ export class ChangesView {
   }
 
   private async ask(taskId: string, message: string): Promise<void> {
-    await this.api.updateTask(taskId, { message, role: "user" });
+    await this.api.replyToTask(taskId, message);
     this.bus.emit("toast", t("changes.asked"));
     void this.refresh(true);
   }
 
-  private async update(id: string, status: string): Promise<void> {
-    await this.api.updateTask(id, { status });
+  private async update(id: string, status: TaskStatus): Promise<void> {
+    await this.api.setTaskStatus(id, status);
     void this.refresh(true);
   }
 
@@ -149,7 +149,7 @@ export class ChangesView {
     if (!id) {
       return;
     }
-    await this.api.updateTask(id, { dismissed: true });
+    await this.api.archiveTask(id);
     this.bus.emit("toast", t("changes.archived"));
     void this.refresh(true);
   }
