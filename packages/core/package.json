@@ -1,7 +1,7 @@
 {
   "name": "repo-visualiser",
   "version": "0.1.0",
-  "description": "Interactive dependency/behavior map for a code repository (analyzer + server + CLI).",
+  "description": "Interactive dependency/behavior map for a code repository (analyzer + CLI).",
   "license": "MIT",
   "bin": {
     "visualise": "dist/cli.js"
@@ -18,13 +18,15 @@
     "build": "tsc -p tsconfig.json && node build-web.js",
     "check-types": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "analyze": "node dist/cli.js --analyze-only",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "tree-sitter-wasms": "^0.1.11",
     "web-tree-sitter": "^0.22.6"
   },
   "devDependencies": {
-    "esbuild": "^0.21.0"
+    "esbuild": "^0.21.0",
+    "vitest": "^3.2.4"
   }
 }

@@ -1,16 +1,47 @@
 import type { ClassNode } from "../core/types";
 
 export type { Behavior, ClassNode, Edge, Graph } from "../core/types";
+export type {
+  ArchitecturePreferences,
+  AutoActivity,
+  AutoStatus,
+  BehaviorSummary,
+  CodingPreferences,
+  NamingPreferences,
+  PreferredLanguage,
+  QualityGatePreferences,
+  // Discriminated task model — the single source of truth lives in the service layer.
+  Task,
+  TaskKind,
+  TaskMessage,
+  TaskImpact,
+  TaskUsage,
+  TaskLock,
+  TaskEndpoint,
+  BehaviorEndpoint,
+  ClassFileEndpoint,
+  DirectoryEndpoint,
+  AddBehaviorSpec,
+  EditBehaviorSpec,
+  CreateFileSpec,
+  CreateFolderSpec,
+  RequestSpec,
+  DescribeBehaviorSpec,
+  ErrorHandling,
+} from "../service/types";
+export type { ApiResponse, ApiError } from "../service/api";
 
-export type ViewMode = "graph" | "folder";
+import type { BehaviorEndpoint, ClassFileEndpoint } from "../service/types";
 
-export interface FolderColor {
+export type ViewMode = "graph" | "folder" | "chat" | "pending" | "changes";
+
+export type FolderColor = {
   accent: string;
   stroke: string;
   fill: string;
 }
 
-export interface FolderNode {
+export type FolderNode = {
   dir: string;
   label: string;
   count: number;
@@ -20,115 +51,71 @@ export interface FolderNode {
   color: FolderColor;
 }
 
-export interface FolderEdge {
+export type FolderEdge = {
   a: string;
   b: string;
   weight: number;
 }
 
-export interface Point {
+export type Point = {
   x: number;
   y: number;
 }
 
-export interface TreeFolder {
+export type TreeFolder = {
   name: string;
   path: string;
   folders: Map<string, TreeFolder>;
   classes: ClassNode[];
 }
 
-export interface TaskMessage {
-  role: string;
-  text: string;
-}
-
-export interface TaskSpec {
-  name?: string;
-  description?: string;
-  errorHandling?: { mode: string; exception: string };
-}
-
-export interface TaskEndpoint {
-  class: string;
-  file: string;
-  behavior: string;
-  dir: string;
-}
-
-export interface TaskImpact {
-  risk?: string;
-  notes?: string[];
-}
-
-export interface Task {
-  id: string;
-  type: string;
-  status: string;
-  from: TaskEndpoint;
-  to: TaskEndpoint;
-  spec: TaskSpec | null;
-  diff?: string | null;
-  impact?: TaskImpact;
-  commitMessage?: string;
-  dismissed?: boolean;
-  lock?: unknown;
-  messages?: TaskMessage[];
-}
-
-export interface MoveTaskFrom {
-  class: string;
-  file: string;
-  behavior: string;
-}
-
-export interface MoveTaskTo {
-  class: string;
-  file: string;
-}
-
-export interface AutoStatus {
-  available?: boolean;
-  enabled?: boolean;
-  running?: boolean;
-  reason?: string;
-}
-
-export interface MetaResponse {
+export type MetaResponse = {
   root: string;
-  hostRoot?: string;
-  version?: number;
+  hostRoot: string | null;
+  version: number | null;
+  locale: string | null;
 }
 
-export interface BrowseEntry {
+export type BrowseEntry = {
   name: string;
   path: string;
 }
 
-export interface BrowseData {
+export type BrowseData = {
   path: string;
   parent: string | null;
   entries: BrowseEntry[];
 }
 
-export interface TemplateRegistry {
+export type TemplateRegistry = {
   extensionFamily: Record<string, string>;
   familyTemplates: Record<string, string[]>;
 }
 
 // Cross-component events (decoupled pub/sub through the Emitter).
-export interface AppEvents {
+export type AppEvents = {
   "graph:reload": void;
   "graph:relayout": void;
+  "graph:reanalyze": void;
   "mode:set": ViewMode;
   "folder:open": string;
   "form:behavior": { className: string; file: string };
   "form:edit": { className: string; file: string; behavior: string; line: string; endLine: string };
+  "behavior:open": {
+    className: string;
+    file: string;
+    behavior: string;
+    line: string;
+    endLine: string;
+    signature: string;
+  };
   "form:create": { kind: string; dir: string };
-  "task:move": { from: MoveTaskFrom; to: MoveTaskTo };
+  "task:move": { from: BehaviorEndpoint; to: ClassFileEndpoint };
   "file:open": { file: string; line: string };
   "tasks:open": void;
   "tasks:refresh": void;
+  "auto:changed": void;
+  "changes:focus": string | null;
   "search:changed": void;
   "lang:changed": void;
   "toast": string;

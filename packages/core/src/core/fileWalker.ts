@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { LanguageRegistry } from "./languageRegistry";
+import { LanguageRegistry } from "./LanguageRegistry";
 
 const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set([
   "node_modules",
@@ -32,6 +32,17 @@ export class FileWalker {
       }
     });
     return sourceFiles;
+  }
+
+  // Every non-ignored file (code or not) so the map can show the whole repo.
+  collectFiles(rootDirectory: string): string[] {
+    const files: string[] = [];
+    this.visit(rootDirectory, (fullPath, entry) => {
+      if (entry.isFile()) {
+        files.push(fullPath);
+      }
+    });
+    return files;
   }
 
   // All non-ignored directories (relative, "/"-joined) so the folder tree can

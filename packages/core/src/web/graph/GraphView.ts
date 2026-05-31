@@ -1,18 +1,24 @@
 import type { AppState } from "../state/AppState";
-import type { Emitter } from "../events";
+import type { Emitter } from "../Emitter";
+import type { ClassNode } from "../types";
 import type { GraphModel } from "./GraphModel";
 import { byId, escapeHtml, qsa } from "../dom";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-// Renders the folder graph (SVG edges + DOM circle nodes) and handles
-// pan/zoom/drag/hover. Emits "folder:open" when a node is clicked.
+// Class-less file kinds get an icon instead of a type badge in the folder card.
+const CARD_ICON: Readonly<Record<string, string>> = { file: "📄", config: "⚙", module: "ƒ" };
+
+// Renders the folder graph (group rings + SVG edges + DOM circle nodes) and drives
+// a live force simulation: pan/zoom/drag/hover, reheating physics on drag.
 export class GraphView {
   private readonly viewport = byId("viewport");
   private readonly world = byId("world");
   private readonly edgesSvg = document.getElementById("edges") as unknown as SVGSVGElement;
   private readonly nodesLayer = byId("nodes");
   private readonly search = byId<HTMLInputElement>("search");
+  private readonly card = byId("graph-card");
+  private animationFrame: number | null = null;
 
   constructor(
     private readonly state: AppState,
@@ -24,38 +30,43 @@ export class GraphView {
     this.setupPanZoom();
     this.setupNodeDrag();
     this.setupHover();
+    this.setupCard();
     this.setupAutoFit();
   }
 
   render(): void {
-    this.renderEdges();
-    this.renderNodes();
-    this.applyView();
+    this.buildScene();
+    if (!this.state.userAdjusted) {
+      this.fitView();
+    }
+    this.startSimulation();
   }
 
   relayout(): void {
     this.state.userAdjusted = false;
-    this.model.layout();
+    this.model.reseed();
     this.render();
-    this.applySearch();
-    this.fitView();
   }
 
   applyView(): void {
     const { x, y, scale } = this.state.view;
     this.world.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    // Keep labels at a constant on-screen size regardless of zoom.
+    this.world.style.setProperty("--label-counter", String(1 / scale));
   }
 
   fitView(): void {
-    const extent = this.model.extent();
+    const bounds = this.model.bounds();
+    const width = bounds.maxX - bounds.minX;
+    const height = bounds.maxY - bounds.minY;
     const rect = this.viewport.getBoundingClientRect();
-    if (!extent.width || !extent.height || rect.width < 10 || rect.height < 10) {
+    if (width < 1 || height < 1 || rect.width < 10 || rect.height < 10) {
       return;
     }
-    const scale = Math.min(rect.width / extent.width, rect.height / extent.height) * 0.92;
-    this.state.view.scale = Math.max(0.1, Math.min(1.6, scale));
-    this.state.view.x = (rect.width - extent.width * this.state.view.scale) / 2;
-    this.state.view.y = (rect.height - extent.height * this.state.view.scale) / 2;
+    const scale = Math.max(0.1, Math.min(1.6, Math.min(rect.width / width, rect.height / height) * 0.9));
+    this.state.view.scale = scale;
+    this.state.view.x = (rect.width - width * scale) / 2 - bounds.minX * scale;
+    this.state.view.y = (rect.height - height * scale) / 2 - bounds.minY * scale;
     this.applyView();
   }
 
@@ -72,22 +83,30 @@ export class GraphView {
     }
   }
 
-  private renderEdges(): void {
-    const extent = this.model.extent();
-    this.edgesSvg.setAttribute("width", String(extent.width));
-    this.edgesSvg.setAttribute("height", String(extent.height));
+  private startSimulation(): void {
+    if (this.animationFrame !== null) {
+      return;
+    }
+    const step = (): void => {
+      const active = this.model.tick();
+      this.syncPositions();
+      if (active) {
+        this.animationFrame = requestAnimationFrame(step);
+      } else {
+        this.animationFrame = null;
+        if (!this.state.userAdjusted) {
+          this.fitView();
+        }
+      }
+    };
+    this.animationFrame = requestAnimationFrame(step);
+  }
+
+  private buildScene(): void {
+    this.hideCard();
     this.edgesSvg.innerHTML = "";
     for (const edge of this.state.folderEdges) {
-      const from = this.state.position.get(edge.a);
-      const to = this.state.position.get(edge.b);
-      if (!from || !to) {
-        continue;
-      }
       const line = document.createElementNS(SVG_NS, "line");
-      line.setAttribute("x1", String(from.x));
-      line.setAttribute("y1", String(from.y));
-      line.setAttribute("x2", String(to.x));
-      line.setAttribute("y2", String(to.y));
       line.setAttribute("stroke", "#5b6172");
       line.setAttribute("stroke-width", String(Math.min(5, 0.6 + edge.weight * 0.5)));
       line.setAttribute("stroke-opacity", "0.45");
@@ -95,47 +114,41 @@ export class GraphView {
       line.dataset.b = edge.b;
       this.edgesSvg.appendChild(line);
     }
-  }
-
-  private renderNodes(): void {
     this.nodesLayer.innerHTML = "";
     for (const folder of this.state.folderNodes) {
-      const position = this.state.position.get(folder.dir);
-      if (!position) {
-        continue;
-      }
       const element = document.createElement("div");
       element.className = "gnode";
       element.dataset.dir = folder.dir;
-      element.style.left = `${position.x}px`;
-      element.style.top = `${position.y}px`;
       const diameter = folder.radius * 2;
+      const badge = folder.count > 0 ? ` <span class="gdeg">${folder.count}</span>` : "";
       element.innerHTML = `
         <div class="gdot" style="width:${diameter}px;height:${diameter}px;background:${folder.color.fill};border-color:${folder.color.stroke}"></div>
-        <div class="glabel" title="${escapeHtml(folder.dir)}">${escapeHtml(folder.label)} <span class="gdeg">${folder.degree}</span></div>`;
+        <div class="glabel" title="${escapeHtml(folder.dir)}">${escapeHtml(folder.label)}${badge}</div>`;
       this.nodesLayer.appendChild(element);
     }
+    this.syncPositions();
   }
 
-  private updateEdgesFor(dir: string): void {
-    const center = this.state.position.get(dir);
-    if (!center) {
-      return;
+  // Per-frame: only positions move (topology is stable), so update coordinates in place.
+  private syncPositions(): void {
+    const position = this.state.position;
+    for (const element of qsa<HTMLElement>(this.nodesLayer, ".gnode")) {
+      const point = position.get(element.dataset.dir ?? "");
+      if (point) {
+        element.style.left = `${point.x}px`;
+        element.style.top = `${point.y}px`;
+      }
     }
     for (const line of qsa<SVGLineElement>(this.edgesSvg, "line")) {
-      if (line.dataset.a === dir) {
-        line.setAttribute("x1", String(center.x));
-        line.setAttribute("y1", String(center.y));
-      }
-      if (line.dataset.b === dir) {
-        line.setAttribute("x2", String(center.x));
-        line.setAttribute("y2", String(center.y));
+      const a = position.get(line.dataset.a ?? "");
+      const b = position.get(line.dataset.b ?? "");
+      if (a && b) {
+        line.setAttribute("x1", String(a.x));
+        line.setAttribute("y1", String(a.y));
+        line.setAttribute("x2", String(b.x));
+        line.setAttribute("y2", String(b.y));
       }
     }
-  }
-
-  private cssEscape(value: string): string {
-    return value.replace(/["\\]/g, "\\$&");
   }
 
   private setupPanZoom(): void {
@@ -146,9 +159,11 @@ export class GraphView {
     let originY = 0;
 
     this.viewport.addEventListener("mousedown", (event) => {
-      if ((event.target as Element | null)?.closest(".gnode")) {
+      const target = event.target as Element | null;
+      if (target?.closest(".gnode") || target?.closest("#graph-card")) {
         return;
       }
+      this.hideCard();
       panning = true;
       this.state.userAdjusted = true;
       this.viewport.classList.add("panning");
@@ -176,6 +191,7 @@ export class GraphView {
       "wheel",
       (event) => {
         event.preventDefault();
+        this.hideCard();
         this.state.userAdjusted = true;
         const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
         const newScale = Math.max(0.1, Math.min(3, this.state.view.scale * factor));
@@ -201,23 +217,21 @@ export class GraphView {
 
     this.nodesLayer.addEventListener("mousedown", (event) => {
       const gnode = (event.target as Element | null)?.closest<HTMLElement>(".gnode");
-      if (!gnode) {
+      const dir = gnode?.dataset.dir ?? null;
+      const position = dir ? this.state.position.get(dir) : null;
+      if (!dir || !position) {
         return;
       }
-      draggingDir = gnode.dataset.dir ?? null;
-      if (!draggingDir) {
-        return;
-      }
-      this.state.userAdjusted = true;
+      draggingDir = dir;
       moved = false;
       startX = event.clientX;
       startY = event.clientY;
-      const position = this.state.position.get(draggingDir);
-      if (!position) {
-        return;
-      }
       originX = position.x;
       originY = position.y;
+      this.hideCard();
+      this.model.pin(dir, { x: position.x, y: position.y });
+      this.model.reheat();
+      this.startSimulation();
       event.preventDefault();
     });
 
@@ -229,27 +243,78 @@ export class GraphView {
       const deltaY = (event.clientY - startY) / this.state.view.scale;
       if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
         moved = true;
+        this.state.userAdjusted = true;
       }
-      const position = this.state.position.get(draggingDir);
-      if (!position) {
-        return;
-      }
-      position.x = originX + deltaX;
-      position.y = originY + deltaY;
-      const element = this.nodesLayer.querySelector<HTMLElement>(`.gnode[data-dir="${this.cssEscape(draggingDir)}"]`);
-      if (element) {
-        element.style.left = `${position.x}px`;
-        element.style.top = `${position.y}px`;
-      }
-      this.updateEdgesFor(draggingDir);
+      this.model.pin(draggingDir, { x: originX + deltaX, y: originY + deltaY });
+      this.model.reheat();
+      this.startSimulation();
     });
 
     window.addEventListener("mouseup", () => {
-      if (draggingDir && !moved) {
-        this.bus.emit("folder:open", draggingDir);
+      if (!draggingDir) {
+        return;
+      }
+      const released = draggingDir;
+      this.model.unpin(released);
+      if (!moved) {
+        this.showCard(released);
       }
       draggingDir = null;
     });
+  }
+
+  // Click a folder node → a list card of the classes directly in it; click a class →
+  // jump to the Folder view (the existing folder:open flow).
+  private setupCard(): void {
+    this.card.addEventListener("click", (event) => {
+      const row = (event.target as Element | null)?.closest<HTMLElement>("[data-class-dir]");
+      if (row) {
+        this.bus.emit("folder:open", row.dataset.classDir ?? "");
+        this.hideCard();
+      }
+    });
+  }
+
+  private showCard(dir: string): void {
+    let node: HTMLElement | null = null;
+    for (const element of qsa<HTMLElement>(this.nodesLayer, ".gnode")) {
+      if (element.dataset.dir === dir) {
+        node = element;
+        break;
+      }
+    }
+    if (!node) {
+      return;
+    }
+    const folder = this.state.folderByDir.get(dir);
+    const classes = this.model.classesIn(dir);
+    const rows = classes.length
+      ? classes.map((item) => this.cardRow(item)).join("")
+      : `<div class="graph-card-empty muted">${escapeHtml(folder?.dir ?? dir)} — no files here</div>`;
+    this.card.innerHTML = `<div class="graph-card-head">${escapeHtml(folder?.label ?? dir)} <span class="muted">${classes.length}</span></div><div class="graph-card-list">${rows}</div>`;
+    const nodeRect = node.getBoundingClientRect();
+    const viewportRect = this.viewport.getBoundingClientRect();
+    const left = Math.min(nodeRect.right - viewportRect.left + 10, viewportRect.width - 260);
+    const top = Math.min(nodeRect.top - viewportRect.top, viewportRect.height - 240);
+    this.card.style.left = `${Math.max(8, left)}px`;
+    this.card.style.top = `${Math.max(8, top)}px`;
+    this.card.classList.remove("hidden");
+  }
+
+  // Class-less files (module/config/file) read as files, not types: a leading icon
+  // and a muted/italic row so they're instantly distinct from real classes.
+  private cardRow(item: ClassNode): string {
+    const icon = CARD_ICON[item.kind];
+    const badge = icon
+      ? `<span class="graph-card-icon">${icon}</span>`
+      : `<span class="graph-card-kind kind-${item.kind}">${item.kind}</span>`;
+    return `<div class="graph-card-row${icon ? " graph-card-row--file" : ""}" data-class-dir="${escapeHtml(
+      item.dir
+    )}">${badge}${escapeHtml(item.name)}</div>`;
+  }
+
+  private hideCard(): void {
+    this.card.classList.add("hidden");
   }
 
   private setupHover(): void {

@@ -1,19 +1,26 @@
 import * as fs from "fs";
 import * as path from "path";
-import { TreeSitterParser } from "./treeSitter";
-import { LanguageRegistry } from "./languageRegistry";
-import { FileWalker } from "./fileWalker";
-import { EdgeBuilder } from "./edgeBuilder";
-import { GraphBuilder } from "./graphBuilder";
+import { TreeSitterParser } from "./TreeSitterParser";
+import { LanguageRegistry } from "./LanguageRegistry";
+import { FileWalker } from "./FileWalker";
+import { EdgeBuilder } from "./EdgeBuilder";
+import { FileNodeRegistry } from "./FileNodeRegistry";
+import { GraphBuilder } from "./GraphBuilder";
 import { Graph } from "./types";
 
 export * from "./types";
-export { GraphBuilder } from "./graphBuilder";
-export { LanguageRegistry } from "./languageRegistry";
+export { GraphBuilder } from "./GraphBuilder";
+export { LanguageRegistry } from "./LanguageRegistry";
 
 function createGraphBuilder(): GraphBuilder {
   const registry = new LanguageRegistry();
-  return new GraphBuilder(new TreeSitterParser(), registry, new FileWalker(registry), new EdgeBuilder());
+  return new GraphBuilder(
+    new TreeSitterParser(),
+    registry,
+    new FileWalker(registry),
+    new EdgeBuilder(),
+    new FileNodeRegistry()
+  );
 }
 
 export async function analyze(rootDirectory: string): Promise<Graph> {

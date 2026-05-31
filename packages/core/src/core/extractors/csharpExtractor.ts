@@ -1,5 +1,5 @@
-import { AbstractExtractor } from "./abstractExtractor";
-import { baseTypeName, childrenOfType, fieldText, visibilityFrom } from "../ast";
+import { AbstractExtractor } from "./AbstractExtractor";
+import { baseTypeName, childrenOfType, fieldText, visibilityFrom } from "../syntaxTree";
 import { Behavior, ClassKind, Dependency, Parameter, ParsedClass, TsNode } from "../types";
 
 const KIND_BY_NODE_TYPE: Readonly<Record<string, ClassKind>> = {
@@ -9,6 +9,7 @@ const KIND_BY_NODE_TYPE: Readonly<Record<string, ClassKind>> = {
   struct_declaration: "struct",
   record_declaration: "record",
   record_struct_declaration: "record",
+  delegate_declaration: "delegate",
 };
 
 export class CSharpExtractor extends AbstractExtractor {
@@ -26,48 +27,10 @@ export class CSharpExtractor extends AbstractExtractor {
     const behaviors: Behavior[] = [];
 
     // positional record parameters act as constructor-style dependencies
-    const recordComponents = classNode.childForFieldName("parameters");
-    if (recordComponents) {
-      for (const param of this.readParameters(recordComponents)) {
-        dependencies.push({ ...param, baseType: baseTypeName(param.type), source: "constructor" });
-      }
-    }
+    this.pushConstructorParams(classNode.childForFieldName("parameters"), dependencies);
 
     const body = classNode.childForFieldName("body");
-    if (body) {
-      for (const member of body.namedChildren) {
-        if (member.type === "field_declaration") {
-          const variableDeclaration = member.namedChildren.find(
-            (child) => child.type === "variable_declaration"
-          );
-          const typeNode = variableDeclaration ? variableDeclaration.childForFieldName("type") : null;
-          if (typeNode) {
-            dependencies.push({
-              name: "",
-              type: typeNode.text,
-              baseType: baseTypeName(typeNode.text),
-              source: "field",
-            });
-          }
-        } else if (member.type === "property_declaration") {
-          const typeNode = member.childForFieldName("type");
-          if (typeNode) {
-            dependencies.push({
-              name: fieldText(member, "name"),
-              type: typeNode.text,
-              baseType: baseTypeName(typeNode.text),
-              source: "field",
-            });
-          }
-        } else if (member.type === "constructor_declaration") {
-          for (const param of this.readParameters(member.childForFieldName("parameters"))) {
-            dependencies.push({ ...param, baseType: baseTypeName(param.type), source: "constructor" });
-          }
-        } else if (member.type === "method_declaration") {
-          behaviors.push(this.readBehavior(member));
-        }
-      }
-    }
+    body?.namedChildren.forEach((member) => this.collectMember(member, dependencies, behaviors));
 
     return {
       name: nameNode.text,
@@ -77,6 +40,45 @@ export class CSharpExtractor extends AbstractExtractor {
       dependencies,
       behaviors,
     };
+  }
+
+  // One class-body member → field/property dependency, constructor params, or a
+  // behavior. Guard-style returns; no nested loops.
+  private collectMember(member: TsNode, dependencies: Dependency[], behaviors: Behavior[]): void {
+    if (member.type === "field_declaration") {
+      const variableDeclaration = member.namedChildren.find((child) => child.type === "variable_declaration");
+      const typeNode = variableDeclaration ? variableDeclaration.childForFieldName("type") : null;
+      if (typeNode) {
+        dependencies.push({ name: "", type: typeNode.text, baseType: baseTypeName(typeNode.text), source: "field" });
+      }
+      return;
+    }
+    if (member.type === "property_declaration") {
+      const typeNode = member.childForFieldName("type");
+      if (typeNode) {
+        dependencies.push({
+          name: fieldText(member, "name"),
+          type: typeNode.text,
+          baseType: baseTypeName(typeNode.text),
+          source: "field",
+        });
+      }
+      return;
+    }
+    if (member.type === "constructor_declaration") {
+      this.pushConstructorParams(member.childForFieldName("parameters"), dependencies);
+      return;
+    }
+    if (member.type === "method_declaration") {
+      behaviors.push(this.readBehavior(member));
+    }
+  }
+
+  // Each parameter of a constructor / positional record → a constructor dependency.
+  private pushConstructorParams(parametersNode: TsNode | null, dependencies: Dependency[]): void {
+    this.readParameters(parametersNode).forEach((param) =>
+      dependencies.push({ ...param, baseType: baseTypeName(param.type), source: "constructor" })
+    );
   }
 
   private modifierText(node: TsNode): string {

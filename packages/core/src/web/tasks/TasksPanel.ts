@@ -1,8 +1,11 @@
-import type { ApiClient } from "../api/ApiClient";
-import type { Emitter } from "../events";
+import type { Api } from "../api/ApiClient";
+import type { Emitter } from "../Emitter";
 import type { Task } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
+import { isTaskCommitted, type GitState } from "../changes/commitState";
+import { usageBadge } from "../usageBadge";
+import { fromBehavior, fromClass, fromDir, specDescription, specName, toClass } from "../taskView";
 
 // The Tasks drawer: renders the queue, polls for changes, and handles
 // approve/reject/cancel/dismiss/chat + drag-to-move enqueue.
@@ -12,7 +15,7 @@ export class TasksPanel {
   private lastTasksJson: string | null = null;
 
   constructor(
-    private readonly api: ApiClient,
+    private readonly api: Api,
     private readonly bus: Emitter
   ) {}
 
@@ -44,15 +47,35 @@ export class TasksPanel {
 
     void this.refresh(true);
     setInterval(() => void this.refresh(), 3000);
+    setInterval(() => void this.updateActivity(), 1000);
+  }
+
+  // Mirrors the Chat tab: streams Claude's live "what it's doing now" line under the
+  // task currently being processed, updated in place so polling never disrupts typing.
+  private async updateActivity(): Promise<void> {
+    let activities;
+    try {
+      activities = await this.api.autoActivity();
+    } catch {
+      return;
+    }
+    const byTask = new Map(activities.map((item) => [item.taskId, item]));
+    for (const node of this.list.querySelectorAll<HTMLElement>(".task-activity")) {
+      const activity = node.dataset.activityFor ? byTask.get(node.dataset.activityFor) : undefined;
+      node.textContent = activity ? `⚙ ${activity.text}` : "";
+      node.classList.toggle("hidden", !activity);
+    }
   }
 
   open(): void {
     this.drawer.classList.remove("hidden");
+    document.body.classList.add("tasks-open");
     void this.refresh(true);
   }
 
   private close(): void {
     this.drawer.classList.add("hidden");
+    document.body.classList.remove("tasks-open");
   }
 
   private async enqueueMove(
@@ -70,12 +93,24 @@ export class TasksPanel {
     void this.refresh(true);
   }
 
+  // Interrupt one running task to stop spending tokens (others keep running).
+  private async stop(taskId: string): Promise<void> {
+    await this.api.stopProcessing(taskId);
+    this.bus.emit("toast", t("chat.stopped"));
+    void this.refresh(true);
+  }
+
   private async remove(id: string): Promise<void> {
     await this.api.deleteTask(id);
     void this.refresh(true);
   }
 
   private onListClick(event: MouseEvent): void {
+    const stopEl = closestEl<HTMLElement>(event.target, "[data-stop]");
+    if (stopEl) {
+      void this.stop(stopEl.dataset.stop ?? "");
+      return;
+    }
     const dismiss = closestEl<HTMLElement>(event.target, "[data-dismiss]");
     if (dismiss) {
       void this.update(dismiss.dataset.dismiss ?? "", { dismissed: true });
@@ -110,6 +145,19 @@ export class TasksPanel {
     }
   }
 
+  private async gitState(): Promise<GitState> {
+    try {
+      const status = await this.api.gitStatus();
+      return {
+        isRepo: status.isRepo,
+        dirtyFiles: new Set(status.dirtyFiles),
+        trackedFiles: new Set(status.trackedFiles),
+      };
+    } catch {
+      return { isRepo: false, dirtyFiles: new Set(), trackedFiles: new Set() };
+    }
+  }
+
   private awaitsClaude(task: Task): boolean {
     if (task.status === "pending" || task.status === "approved") {
       return true;
@@ -126,9 +174,19 @@ export class TasksPanel {
     } catch {
       return;
     }
-    tasks = tasks.filter((task) => !task.dismissed);
-    const active = tasks.filter((task) => task.status !== "applied" && task.status !== "rejected");
-    byId("tasks-count").textContent = String(active.length);
+    const git = await this.gitState();
+    // The task-based operational view (every ister Claude works): in-flight + applied
+    // that isn't yet committed. Awaiting-approval (proposed) lives in the Pending tab;
+    // committed work in the Changes tab; both are excluded here.
+    tasks = tasks.filter(
+      (task) =>
+        !task.dismissed &&
+        task.type !== "describe-behavior" &&
+        task.status !== "rejected" &&
+        task.status !== "proposed" &&
+        !isTaskCommitted(task, git)
+    );
+    byId("tasks-count").textContent = String(tasks.length);
 
     const waiting = tasks.filter((task) => this.awaitsClaude(task)).length;
     byId("tasks-btn").classList.toggle("attention", waiting > 0);
@@ -200,44 +258,48 @@ export class TasksPanel {
 
     let title: string;
     let detail = "";
+    const description = specDescription(task);
     if (task.type === "add-behavior") {
-      const name = task.spec && task.spec.name ? `${task.spec.name}()` : t("task.add");
+      const name = task.spec.name ? `${task.spec.name}()` : t("task.add");
       title = `<span class="task-add">＋ ${escapeHtml(name)}</span> <span class="muted">${t(
         "task.in"
-      )} ${escapeHtml(task.from.class)}</span>`;
-      if (task.spec && task.spec.description) {
+      )} ${escapeHtml(fromClass(task))}</span>`;
+      if (description) {
         const errorHandling = task.spec.errorHandling;
         const errorLine =
-          errorHandling && errorHandling.mode === "throw"
+          errorHandling.mode === "throw"
             ? `<div class="task-err">${t("task.onFailure")}: throw ${escapeHtml(
                 errorHandling.exception || "Exception"
               )}</div>`
-            : errorHandling && errorHandling.mode === "nullable"
+            : errorHandling.mode === "nullable"
             ? `<div class="task-err">${t("task.onFailure")}: return null/undefined</div>`
             : "";
-        detail = `<div class="task-desc">${escapeHtml(task.spec.description)}${errorLine}</div>`;
+        detail = `<div class="task-desc">${escapeHtml(description)}${errorLine}</div>`;
       }
     } else if (task.type === "edit-behavior") {
-      title = `<span class="task-edit">✎ ${escapeHtml(task.from.behavior)}()</span> <span class="muted">${t(
+      title = `<span class="task-edit">✎ ${escapeHtml(fromBehavior(task))}()</span> <span class="muted">${t(
         "task.in"
-      )} ${escapeHtml(task.from.class)}</span>`;
-      if (task.spec && task.spec.description) {
-        detail = `<div class="task-desc">${escapeHtml(task.spec.description)}</div>`;
+      )} ${escapeHtml(fromClass(task))}</span>`;
+      if (description) {
+        detail = `<div class="task-desc">${escapeHtml(description)}</div>`;
       }
     } else if (task.type === "create-file" || task.type === "create-folder") {
       const label = task.type === "create-file" ? t("create.file") : t("create.folder");
-      title = `<span class="task-add">＋ ${escapeHtml(
-        (task.spec && task.spec.name) || ""
-      )}</span> <span class="muted">${label} ${t("create.in")} ${escapeHtml(
-        (task.from && task.from.dir) || "/"
-      )}</span>`;
-      if (task.spec && task.spec.description) {
-        detail = `<div class="task-desc">${escapeHtml(task.spec.description)}</div>`;
+      title = `<span class="task-add">＋ ${escapeHtml(specName(task))}</span> <span class="muted">${label} ${t(
+        "create.in"
+      )} ${escapeHtml(fromDir(task) || "/")}</span>`;
+      if (description) {
+        detail = `<div class="task-desc">${escapeHtml(description)}</div>`;
+      }
+    } else if (task.type === "request") {
+      title = `<span class="task-edit">✦ ${t("changes.request")}</span>`;
+      if (description) {
+        detail = `<div class="task-desc">${escapeHtml(description)}</div>`;
       }
     } else {
-      title = `${escapeHtml(task.from.behavior)}() <span class="muted">${escapeHtml(
-        task.from.class
-      )} → ${escapeHtml(task.to.class)}</span>`;
+      title = `${escapeHtml(fromBehavior(task))}() <span class="muted">${escapeHtml(
+        fromClass(task)
+      )} → ${escapeHtml(toClass(task))}</span>`;
     }
 
     const isDone = task.status === "applied" || task.status === "rejected";
@@ -246,12 +308,15 @@ export class TasksPanel {
         <span class="status-badge status-${task.status}">${t("status." + task.status)}</span>
         ${
           task.lock
-            ? `<span class="processing-chip">⚙ ${t("task.processing")}</span>`
+            ? `<span class="processing-chip">⚙ ${t("task.processing")}</span><button class="stop-btn" data-stop="${task.id}" title="${t(
+                "chat.stop"
+              )}">⏹ ${t("chat.stop")}</button>`
             : this.awaitsClaude(task)
             ? `<span class="awaiting-chip">⏳ ${t("task.awaiting")}</span>`
             : ""
         }
         <span class="task-title">${title}</span>
+        ${usageBadge(task.usage)}
         ${
           isDone
             ? `<button class="task-dismiss" data-dismiss="${task.id}" title="${t("task.dismiss")}">×</button>`
@@ -265,6 +330,7 @@ export class TasksPanel {
         ${commit}
         ${actions}
         <div class="task-messages">${messages}</div>
+        <div class="task-activity chat-activity hidden" data-activity-for="${task.id}"></div>
         <input class="task-chat" data-chat="${task.id}" placeholder="${t("task.chat")}" />
       </div>
     </div>`;

@@ -1,5 +1,8 @@
 import { TsNode, Visibility } from "./types";
 
+// Readers over the tree-sitter syntax tree: pull child nodes, field text, the bare
+// type name, and a declaration's visibility out of a parsed source node.
+
 // Reduce a type expression to the bare identifier used for edge matching.
 //   List<User>     -> List
 //   com.x.UserRepo -> UserRepo

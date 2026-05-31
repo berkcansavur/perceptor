@@ -1,5 +1,5 @@
-import type { ApiClient } from "../api/ApiClient";
-import type { Emitter } from "../events";
+import type { Api } from "../api/ApiClient";
+import type { Emitter } from "../Emitter";
 import { byId } from "../dom";
 import { t } from "../i18n";
 
@@ -14,7 +14,7 @@ export class EditForm {
   private readonly target = { class: "", file: "", behavior: "", line: "0", endLine: "0" };
 
   constructor(
-    private readonly api: ApiClient,
+    private readonly api: Api,
     private readonly bus: Emitter
   ) {}
 
@@ -41,8 +41,7 @@ export class EditForm {
     this.modal.classList.remove("hidden");
     this.descInput.focus();
     try {
-      const data = await this.api.source(file, line, endLine);
-      this.codeView.textContent = data.ok ? data.code ?? "" : "(source unavailable)";
+      this.codeView.textContent = await this.api.source(file, line, endLine);
     } catch {
       this.codeView.textContent = "(source unavailable)";
     }

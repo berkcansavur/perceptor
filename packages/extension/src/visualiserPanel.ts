@@ -2,8 +2,9 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import type { CoreService } from "repo-visualiser/dist/service";
+import { createNonce, renderWebviewHtml } from "./webviewHtml";
 
-interface RpcMessage {
+type RpcMessage = {
   id: number;
   action: string;
   payload: Record<string, unknown>;
@@ -17,8 +18,7 @@ export class VisualiserPanel {
 
   private constructor(
     private readonly core: CoreService,
-    private readonly webDirectory: string,
-    private readonly log: (message: string) => void
+    private readonly webDirectory: string
   ) {
     this.panel = vscode.window.createWebviewPanel("repoVisualiser", "Repo Visualiser", vscode.ViewColumn.One, {
       enableScripts: true,
@@ -32,56 +32,32 @@ export class VisualiserPanel {
     });
   }
 
-  static show(core: CoreService, webDirectory: string, log: (message: string) => void): void {
+  static show(core: CoreService, webDirectory: string): void {
     if (VisualiserPanel.current) {
       VisualiserPanel.current.panel.reveal(vscode.ViewColumn.One);
       return;
     }
-    VisualiserPanel.current = new VisualiserPanel(core, webDirectory, log);
+    VisualiserPanel.current = new VisualiserPanel(core, webDirectory);
   }
 
+  // Every action — including openFile — flows through core.dispatch, which always
+  // answers with an ApiResponse envelope (its funnel maps any failure), so the host
+  // just forwards the result. The editor work for openFile is the FileOpener the
+  // extension injects when it builds the CoreService.
   private async onMessage(message: RpcMessage): Promise<void> {
-    let result: unknown;
-    try {
-      result =
-        message.action === "openFile"
-          ? await this.openFile(message.payload)
-          : await this.core.dispatch(message.action, message.payload);
-    } catch (error) {
-      this.log(`dispatch ${message.action} failed: ${error instanceof Error ? error.message : String(error)}`);
-      result = { ok: false, error: "internal error" };
-    }
+    const result = await this.core.dispatch(message.action, message.payload);
     void this.panel.webview.postMessage({ id: message.id, result });
   }
 
-  private async openFile(payload: Record<string, unknown>): Promise<{ ok: boolean }> {
-    const file = String(payload["file"] ?? "");
-    const line = Math.max(0, Number(payload["line"] ?? 1) - 1);
-    const root = this.core.meta().root;
-    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(root, file)));
-    const position = new vscode.Position(line, 0);
-    await vscode.window.showTextDocument(document, { selection: new vscode.Range(position, position) });
-    return { ok: true };
-  }
-
   private html(webview: vscode.Webview): string {
-    const nonce = Array.from({ length: 24 }, () => Math.floor(Math.random() * 36).toString(36)).join("");
-    const appUri = webview.asWebviewUri(vscode.Uri.file(path.join(this.webDirectory, "app.js")));
-    const styleUri = webview.asWebviewUri(vscode.Uri.file(path.join(this.webDirectory, "style.css")));
-    const csp = [
-      "default-src 'none'",
-      `style-src ${webview.cspSource} 'unsafe-inline'`,
-      `script-src 'nonce-${nonce}'`,
-      `font-src ${webview.cspSource}`,
-      `img-src ${webview.cspSource} data:`,
-    ].join("; ");
-
-    return fs
-      .readFileSync(path.join(this.webDirectory, "index.html"), "utf8")
-      .replace(
-        '<link rel="stylesheet" href="style.css" />',
-        `<meta http-equiv="Content-Security-Policy" content="${csp}" />\n    <link rel="stylesheet" href="${styleUri.toString()}" />`
-      )
-      .replace('<script src="app.js"></script>', `<script nonce="${nonce}" src="${appUri.toString()}"></script>`);
+    const toUri = (file: string): string =>
+      webview.asWebviewUri(vscode.Uri.file(path.join(this.webDirectory, file))).toString();
+    return renderWebviewHtml({
+      template: fs.readFileSync(path.join(this.webDirectory, "index.html"), "utf8"),
+      cspSource: webview.cspSource,
+      nonce: createNonce(),
+      styleUri: toUri("style.css"),
+      scriptUri: toUri("app.js"),
+    });
   }
 }

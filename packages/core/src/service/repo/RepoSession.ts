@@ -1,5 +1,5 @@
-import { analyze, Graph } from "../core";
-import { FileWatcher } from "./fileWatcher";
+import { analyze, Graph } from "../../core";
+import { FileWatcher } from "./FileWatcher";
 
 // Holds the mutable "which repo are we viewing" state: current root, the last
 // analyzed graph (in memory), a version (bumped on every analyze) and a file
@@ -10,7 +10,7 @@ export class RepoSession {
   private lastGraph: Graph | null = null;
   private readonly watcher: FileWatcher;
 
-  constructor(initialRoot: string, private readonly onChange?: () => void) {
+  constructor(initialRoot: string, private readonly onChange: (() => void) | null) {
     this.root = initialRoot;
     this.watcher = new FileWatcher(() => {
       void this.reanalyzeSilently();

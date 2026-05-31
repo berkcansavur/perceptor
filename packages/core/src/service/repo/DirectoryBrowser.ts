@@ -13,12 +13,12 @@ const HIDDEN_DIRECTORIES: ReadonlySet<string> = new Set([
   ".git",
 ]);
 
-export interface BrowseEntry {
+export type BrowseEntry = {
   readonly name: string;
   readonly path: string;
 }
 
-export interface BrowseResult {
+export type BrowseResult = {
   readonly path: string;
   readonly parent: string | null;
   readonly root: string;

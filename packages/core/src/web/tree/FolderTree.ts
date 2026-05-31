@@ -1,9 +1,25 @@
 import type { AppState } from "../state/AppState";
-import type { Emitter } from "../events";
+import type { Emitter } from "../Emitter";
 import type { Behavior, TreeFolder } from "../types";
 import { byId, closestEl, escapeHtml, qsa } from "../dom";
 import { folderColor, roleColorHex } from "../graph/roleColors";
 import { t } from "../i18n";
+
+const BEHAVIORLESS_KINDS: ReadonlySet<string> = new Set([
+  "enum",
+  "type",
+  "const",
+  "annotation",
+  "delegate",
+  "module",
+  "config",
+  "file",
+]);
+
+// Kinds with no methods: they can't gain a behavior nor receive a dragged one.
+function isBehaviorlessKind(kind: string): boolean {
+  return BEHAVIORLESS_KINDS.has(kind);
+}
 
 // VS-style collapsible tree (folders > classes > behaviors): build, render, and
 // interactions. Emits form/move intents; reveals folders on request.
@@ -118,6 +134,11 @@ export class FolderTree {
     )}</span>`;
   }
 
+  private behaviorSignaturePlain(behavior: Behavior): string {
+    const params = behavior.params.map((param) => `${param.name}: ${param.type}`).join(", ");
+    return `${behavior.name}(${params}): ${behavior.returnType}`;
+  }
+
   private renderFolderNode(folder: TreeFolder): string {
     const folderEntries = [...folder.folders.values()].sort((a, b) => a.name.localeCompare(b.name));
     const classEntries = [...folder.classes].sort((a, b) => a.name.localeCompare(b.name));
@@ -141,8 +162,8 @@ export class FolderTree {
             (behavior) =>
               `<div class="behavior" draggable="true" data-behavior="${escapeHtml(
                 behavior.name
-              )}" data-line="${behavior.line || 0}" data-endline="${behavior.endLine || 0}" title="${t(
-                "edit.btn"
+              )}" data-line="${behavior.line || 0}" data-endline="${behavior.endLine || 0}" data-signature="${escapeHtml(
+                this.behaviorSignaturePlain(behavior)
               )}"><span class="vis-dot vis-${behavior.visibility}"></span><span class="behavior-sig">${this.behaviorSignature(
                 behavior
               )}</span></div>`
@@ -159,7 +180,7 @@ export class FolderTree {
             <span class="tree-class-name">${escapeHtml(node.name)}</span>
             <span class="tree-count">${node.behaviors.length}</span>
             <button class="row-btn vscode-btn" title="${t("vscode.open")}">VS Code</button>
-            ${node.kind === "enum" ? "" : `<button class="row-btn add-behavior-btn">${t("addbeh.btn")}</button>`}
+            ${isBehaviorlessKind(node.kind) ? "" : `<button class="row-btn add-behavior-btn">${t("addbeh.btn")}</button>`}
           </div>
           <div class="tree-behaviors">${behaviors || '<div class="tree-empty">no public behaviors</div>'}</div>
         </div>`;
@@ -209,12 +230,13 @@ export class FolderTree {
       if (behaviorRow) {
         const owner = closestEl<HTMLElement>(behaviorRow, ".tree-class");
         if (owner) {
-          this.bus.emit("form:edit", {
+          this.bus.emit("behavior:open", {
             className: owner.dataset.class ?? "",
             file: owner.dataset.file ?? "",
             behavior: behaviorRow.dataset.behavior ?? "",
             line: behaviorRow.dataset.line ?? "0",
             endLine: behaviorRow.dataset.endline ?? "0",
+            signature: behaviorRow.dataset.signature ?? "",
           });
         }
         return;
@@ -238,7 +260,7 @@ export class FolderTree {
         return;
       }
       const owner = closestEl<HTMLElement>(behavior, ".tree-class");
-      if (!owner) {
+      if (!owner || isBehaviorlessKind(owner.dataset.kind ?? "")) {
         return;
       }
       this.dragData = {
@@ -259,7 +281,7 @@ export class FolderTree {
 
     this.tree.addEventListener("dragover", (event) => {
       const target = closestEl<HTMLElement>(event.target, ".tree-class");
-      if (!target || !this.dragData || target.dataset.kind === "enum") {
+      if (!target || !this.dragData || isBehaviorlessKind(target.dataset.kind ?? "")) {
         return;
       }
       event.preventDefault();
@@ -275,7 +297,7 @@ export class FolderTree {
 
     this.tree.addEventListener("drop", (event) => {
       const target = closestEl<HTMLElement>(event.target, ".tree-class");
-      if (!target || !this.dragData || target.dataset.kind === "enum") {
+      if (!target || !this.dragData || isBehaviorlessKind(target.dataset.kind ?? "")) {
         return;
       }
       event.preventDefault();

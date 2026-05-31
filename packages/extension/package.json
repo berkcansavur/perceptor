@@ -34,7 +34,9 @@
   },
   "homepage": "https://github.com/berkcansavur/repo-visualiser#readme",
   "main": "./dist/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -68,6 +70,7 @@
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "check-types": "tsc --noEmit",
+    "test": "vitest run",
     "vscode:prepublish": "node esbuild.js"
   },
   "dependencies": {
@@ -75,6 +78,7 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",
-    "esbuild": "^0.21.0"
+    "esbuild": "^0.21.0",
+    "vitest": "^3.2.4"
   }
 }

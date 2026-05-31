@@ -1,5 +1,5 @@
-import type { ApiClient } from "../api/ApiClient";
-import type { Emitter } from "../events";
+import type { Api } from "../api/ApiClient";
+import type { Emitter } from "../Emitter";
 import { byId } from "../dom";
 import { t } from "../i18n";
 
@@ -14,7 +14,7 @@ export class BehaviorForm {
   private exceptionEdited = false;
 
   constructor(
-    private readonly api: ApiClient,
+    private readonly api: Api,
     private readonly bus: Emitter
   ) {}
 

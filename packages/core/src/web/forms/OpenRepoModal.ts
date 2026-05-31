@@ -1,6 +1,6 @@
-import type { ApiClient } from "../api/ApiClient";
+import type { Api } from "../api/ApiClient";
 import type { AppState } from "../state/AppState";
-import type { Emitter } from "../events";
+import type { Emitter } from "../Emitter";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
 
@@ -18,7 +18,7 @@ export class OpenRepoModal {
   private currentParent: string | null = null;
 
   constructor(
-    private readonly api: ApiClient,
+    private readonly api: Api,
     private readonly state: AppState,
     private readonly bus: Emitter
   ) {}
@@ -154,18 +154,20 @@ export class OpenRepoModal {
       return;
     }
     this.bus.emit("toast", t("toast.opening"));
-    const result = await this.api.open(target);
-    if (result.ok && result.root) {
-      this.setRepoName(result.root);
-      this.state.hostRoot = result.hostRoot ?? result.root;
-      this.rememberRecent(result.root);
-      this.close();
-      this.state.userAdjusted = false;
-      this.bus.emit("graph:reload", undefined);
-      this.bus.emit("toast", t("toast.opened", { name: this.basename(result.root) }));
-    } else {
-      this.error.textContent = t("open.error", { error: String(result.error ?? "") });
+    let result: { root: string; hostRoot: string };
+    try {
+      result = await this.api.open(target);
+    } catch (error) {
+      this.error.textContent = t("open.error", { error: error instanceof Error ? error.message : String(error) });
       this.error.classList.remove("hidden");
+      return;
     }
+    this.setRepoName(result.root);
+    this.state.hostRoot = result.hostRoot;
+    this.rememberRecent(result.root);
+    this.close();
+    this.state.userAdjusted = false;
+    this.bus.emit("graph:reload", undefined);
+    this.bus.emit("toast", t("toast.opened", { name: this.basename(result.root) }));
   }
 }

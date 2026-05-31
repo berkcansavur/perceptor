@@ -1,7 +1,17 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { createCoreService, CoreService } from "repo-visualiser/dist/service";
+import { createCoreService, CoreService, type FileOpener } from "repo-visualiser/dist/service";
 import { VisualiserPanel } from "./visualiserPanel";
+
+// The host capability the core can't provide: reveal a file in the editor at a line.
+// The core resolves the repo-relative path to an absolute one before calling this.
+const editorFileOpener: FileOpener = {
+  async open(absolutePath: string, line: number): Promise<void> {
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(absolutePath));
+    const position = new vscode.Position(line, 0);
+    await vscode.window.showTextDocument(document, { selection: new vscode.Range(position, position) });
+  },
+};
 
 let output: vscode.OutputChannel;
 let core: CoreService | undefined;
@@ -20,7 +30,7 @@ async function openCommand(): Promise<void> {
   if (!core) {
     const settings = vscode.workspace.getConfiguration("repoVisualiser");
     process.env["VISUALISE_CLAUDE_BIN"] = settings.get<string>("claudePath", "claude");
-    const service = createCoreService(folder.uri.fsPath);
+    const service = createCoreService(folder.uri.fsPath, null, editorFileOpener);
     try {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Repo Visualiser: analyzing…" },
@@ -38,7 +48,7 @@ async function openCommand(): Promise<void> {
   if (vscode.workspace.getConfiguration("repoVisualiser").get<boolean>("autoProcessOnOpen", false)) {
     core.setAuto(true);
   }
-  VisualiserPanel.show(core, webDirectory(), (message) => output.appendLine(message));
+  VisualiserPanel.show(core, webDirectory());
 }
 
 export function activate(context: vscode.ExtensionContext): void {

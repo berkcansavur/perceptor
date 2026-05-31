@@ -1,8 +1,8 @@
 import * as path from "path";
 import { LanguageDefinition, LanguageExtractor } from "./types";
-import { JavaExtractor } from "./extractors/javaExtractor";
-import { CSharpExtractor } from "./extractors/csharpExtractor";
-import { TypeScriptExtractor } from "./extractors/typeScriptExtractor";
+import { JavaExtractor } from "./extractors/JavaExtractor";
+import { CSharpExtractor } from "./extractors/CSharpExtractor";
+import { TypeScriptExtractor } from "./extractors/TypeScriptExtractor";
 
 const WASM_DIRECTORY = path.join(require.resolve("tree-sitter-wasms/package.json"), "..", "out");
 
@@ -19,11 +19,9 @@ export class LanguageRegistry {
       this.define("typescript", [".ts", ".mts", ".cts"], "tree-sitter-typescript.wasm", typeScript),
       this.define("tsx", [".tsx"], "tree-sitter-tsx.wasm", typeScript),
     ];
-    for (const definition of definitions) {
-      for (const extension of definition.extensions) {
-        this.byExtension.set(extension, definition);
-      }
-    }
+    definitions
+      .flatMap((definition) => definition.extensions.map((extension) => ({ extension, definition })))
+      .forEach(({ extension, definition }) => this.byExtension.set(extension, definition));
   }
 
   private define(

@@ -14,16 +14,17 @@
       <div id="mode-toggle">
         <button id="mode-graph" class="active" data-i18n="mode.graph">Graph</button>
         <button id="mode-folder" data-i18n="mode.folder">Folder</button>
+        <button id="mode-chat" data-i18n="mode.chat">Chat</button>
+        <button id="mode-pending" class="hidden"><span data-i18n="mode.pending">Pending</span> <span id="pending-count">0</span></button>
+        <button id="mode-changes" class="hidden"><span data-i18n="mode.changes">Changes</span> <span id="changes-count">0</span></button>
       </div>
+      <button id="reanalyze" data-i18n="btn.reanalyze" title="Refresh indexing">Refresh</button>
       <input id="search" type="search" data-i18n-placeholder="search.placeholder" />
       <span id="stats" class="muted"></span>
       <span class="spacer"></span>
-      <span class="legend">
-        <span class="legend-item"><i class="edge-constructor"></i><span data-i18n="legend.constructor">constructor</span></span>
-        <span class="legend-item"><i class="edge-field"></i><span data-i18n="legend.field">field</span></span>
-      </span>
       <button id="relayout" data-i18n="btn.relayout">Re-layout</button>
       <button id="tasks-btn"><span data-i18n="btn.tasks">Tasks</span> <span id="tasks-count">0</span></button>
+      <button id="prefs-btn" data-i18n="prefs.btn">⚙ Prefs</button>
       <select id="lang-select" title="Language">
         <option value="en">EN</option>
         <option value="tr">TR</option>
@@ -36,9 +37,52 @@
         <div id="nodes"></div>
       </div>
       <div id="empty" class="hidden" data-i18n="empty.graph">No graph yet. Open a repository.</div>
+      <div id="graph-card" class="hidden"></div>
     </main>
 
     <section id="tree" class="hidden"></section>
+
+    <section id="chat" class="hidden">
+      <label id="chat-auto" class="hidden">
+        <input id="chat-auto-toggle" type="checkbox" />
+        <span id="chat-auto-label" data-i18n="auto.label">Auto-process (uses Claude tokens)</span>
+        <span id="chat-auto-status" class="muted"></span>
+      </label>
+      <div id="chat-thread"></div>
+      <div id="chat-hint" class="hidden"></div>
+      <div id="chat-composer">
+        <textarea id="chat-input" rows="2" data-i18n-placeholder="chat.placeholder"></textarea>
+        <button id="chat-send" class="primary" data-i18n="chat.send">Send</button>
+      </div>
+    </section>
+
+    <section id="pending" class="hidden">
+      <div id="pending-tree"></div>
+    </section>
+
+    <section id="changes" class="hidden">
+      <div id="changes-tree"></div>
+    </section>
+
+    <aside id="behavior-drawer" class="hidden">
+      <div class="drawer-header">
+        <span id="behavior-drawer-title"></span>
+        <button id="behavior-drawer-close" title="Close">×</button>
+      </div>
+      <code id="behavior-drawer-sig"></code>
+      <div class="behavior-drawer-section">
+        <div class="behavior-drawer-label" data-i18n="changes.summary">What it does</div>
+        <div id="behavior-drawer-summary" class="behavior-drawer-summary muted"></div>
+        <button id="behavior-explain">✨ <span data-i18n="behavior.explain">Explain</span></button>
+      </div>
+      <div class="behavior-drawer-section">
+        <div class="behavior-drawer-label" data-i18n="behavior.source">Source</div>
+        <pre id="behavior-drawer-code" class="code-view"></pre>
+      </div>
+      <div class="behavior-drawer-footer">
+        <button id="behavior-edit" class="primary" data-i18n="edit.btn">Edit</button>
+      </div>
+    </aside>
 
     <aside id="tasks-drawer" class="hidden">
       <div class="drawer-header">
@@ -126,6 +170,109 @@
         <div class="modal-actions">
           <button id="open-cancel" data-i18n="modal.cancel">Cancel</button>
           <button id="open-confirm" class="primary" data-i18n="open.confirm">Open</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="prefs-modal" class="hidden">
+      <div class="modal-card prefs-card">
+        <div class="modal-title" data-i18n="prefs.title">Coding Preferences</div>
+        <div class="prefs-intro muted" data-i18n="prefs.intro">
+          Claude obeys these when generating or moving code in this repository.
+        </div>
+
+        <div class="prefs-section" data-i18n="prefs.langSection">Language</div>
+        <div class="prefs-grid">
+          <label class="modal-sub" data-i18n="prefs.primary">Primary language</label>
+          <select id="prefs-primary-language">
+            <option value="typescript">TypeScript</option>
+            <option value="java">Java</option>
+            <option value="csharp">C#</option>
+          </select>
+          <label class="modal-sub" data-i18n="prefs.additional">Additional languages</label>
+          <div class="prefs-checks">
+            <label><input id="prefs-lang-typescript" type="checkbox" /> TypeScript</label>
+            <label><input id="prefs-lang-java" type="checkbox" /> Java</label>
+            <label><input id="prefs-lang-csharp" type="checkbox" /> C#</label>
+          </div>
+        </div>
+
+        <div class="prefs-section" data-i18n="prefs.namingSection">Naming</div>
+        <div class="prefs-grid">
+          <label class="modal-sub" data-i18n="prefs.classCase">Class casing</label>
+          <input id="prefs-class-case" type="text" />
+          <label class="modal-sub" data-i18n="prefs.methodCase">Method casing</label>
+          <input id="prefs-method-case" type="text" />
+          <label class="modal-sub" data-i18n="prefs.variableCase">Variable casing</label>
+          <input id="prefs-variable-case" type="text" />
+          <label class="modal-sub" data-i18n="prefs.constantCase">Constant casing</label>
+          <input id="prefs-constant-case" type="text" />
+          <label class="modal-sub" data-i18n="prefs.fileNaming">File naming</label>
+          <input id="prefs-file-naming" type="text" />
+          <label class="modal-sub" data-i18n="prefs.booleanPrefixes">Boolean prefixes (comma)</label>
+          <input id="prefs-boolean-prefixes" type="text" />
+          <label class="modal-sub" data-i18n="prefs.testPattern">Test naming pattern</label>
+          <input id="prefs-test-pattern" type="text" />
+          <label class="modal-sub" data-i18n="prefs.allowAbbreviations">Allow abbreviations</label>
+          <input id="prefs-allow-abbreviations" type="checkbox" />
+        </div>
+
+        <div class="prefs-section" data-i18n="prefs.archSection">Architecture</div>
+        <div class="prefs-grid">
+          <label class="modal-sub" data-i18n="prefs.di">Dependency injection</label>
+          <input id="prefs-di" type="text" />
+          <label class="modal-sub" data-i18n="prefs.layering">Layering (comma)</label>
+          <input id="prefs-layering" type="text" />
+          <label class="modal-sub" data-i18n="prefs.packaging">Packaging</label>
+          <select id="prefs-packaging">
+            <option value="feature" data-i18n="prefs.packagingFeature">Feature-based</option>
+            <option value="layer" data-i18n="prefs.packagingLayer">Layer-based</option>
+          </select>
+          <label class="modal-sub" data-i18n="prefs.patterns">Preferred patterns (comma)</label>
+          <input id="prefs-patterns" type="text" />
+          <label class="modal-sub" data-i18n="prefs.errorHandling">Error handling</label>
+          <select id="prefs-error-handling">
+            <option value="throw-domain-exception" data-i18n="prefs.errThrow">Throw domain exception</option>
+            <option value="nullable" data-i18n="prefs.errNullable">Return null / undefined</option>
+            <option value="result-type" data-i18n="prefs.errResult">Result / Either type</option>
+          </select>
+        </div>
+
+        <div class="prefs-section" data-i18n="prefs.qualitySection">Quality gates</div>
+        <div class="prefs-grid">
+          <label class="modal-sub" data-i18n="prefs.maxComplexity">Max time complexity</label>
+          <select id="prefs-max-complexity">
+            <option value="O(1)">O(1)</option>
+            <option value="O(log n)">O(log n)</option>
+            <option value="O(n)">O(n)</option>
+            <option value="O(n log n)">O(n log n)</option>
+          </select>
+          <label class="modal-sub" data-i18n="prefs.maxMethodLines">Max method lines</label>
+          <input id="prefs-max-method-lines" type="number" min="1" />
+          <label class="modal-sub" data-i18n="prefs.forbidNPlus1">Forbid N+1 queries</label>
+          <input id="prefs-forbid-nplus1" type="checkbox" />
+          <label class="modal-sub" data-i18n="prefs.requireImpact">Require impact analysis</label>
+          <input id="prefs-require-impact" type="checkbox" />
+          <label class="modal-sub" data-i18n="prefs.forbidDuplication">Forbid code duplication</label>
+          <input id="prefs-forbid-duplication" type="checkbox" />
+          <label class="modal-sub" data-i18n="prefs.singleResponsibility">Single responsibility</label>
+          <input id="prefs-single-responsibility" type="checkbox" />
+        </div>
+
+        <div class="prefs-section" data-i18n="prefs.commentsSection">Comments</div>
+        <div class="prefs-grid">
+          <label class="modal-sub" data-i18n="prefs.commentsPolicy">Comment policy</label>
+          <select id="prefs-comments">
+            <option value="minimal-why-only" data-i18n="prefs.commentsMinimal">Minimal (why-only)</option>
+            <option value="none" data-i18n="prefs.commentsNone">None</option>
+            <option value="doc-public" data-i18n="prefs.commentsDoc">Document public API</option>
+          </select>
+        </div>
+
+        <div id="prefs-error" class="modal-error hidden"></div>
+        <div class="modal-actions">
+          <button id="prefs-cancel" data-i18n="modal.cancel">Cancel</button>
+          <button id="prefs-save" class="primary" data-i18n="prefs.save">Save</button>
         </div>
       </div>
     </div>

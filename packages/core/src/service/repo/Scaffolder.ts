@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ScaffoldRequest } from "./types";
+import { ScaffoldRequest } from "../types";
 
 const CODE_EXTENSIONS: ReadonlySet<string> = new Set([
   ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
@@ -33,7 +33,7 @@ const EXTENSION_FAMILY: Readonly<Record<string, string>> = {
   ".toml": "toml",
 };
 
-interface ScaffoldContext {
+type ScaffoldContext = {
   readonly typeName: string;
   readonly namespace: string;
   readonly goPackage: string;
@@ -42,7 +42,7 @@ interface ScaffoldContext {
 }
 
 // Strategy per file family (Open/Closed: add a language = add an entry).
-interface LanguageTemplates {
+type LanguageTemplates = {
   readonly templates: readonly string[];
   generate(template: string, context: ScaffoldContext): string;
 }

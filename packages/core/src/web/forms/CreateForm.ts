@@ -1,5 +1,5 @@
-import type { ApiClient } from "../api/ApiClient";
-import type { Emitter } from "../events";
+import type { Api } from "../api/ApiClient";
+import type { Emitter } from "../Emitter";
 import type { TemplateRegistry } from "../types";
 import { byId } from "../dom";
 import { t } from "../i18n";
@@ -25,7 +25,7 @@ export class CreateForm {
   private registry: TemplateRegistry = { extensionFamily: {}, familyTemplates: { other: ["empty"] } };
 
   constructor(
-    private readonly api: ApiClient,
+    private readonly api: Api,
     private readonly bus: Emitter
   ) {}
 
@@ -49,10 +49,7 @@ export class CreateForm {
 
   private async loadTemplates(): Promise<void> {
     try {
-      const info = await this.api.fileTemplates();
-      if (info.ok) {
-        this.registry = info;
-      }
+      this.registry = await this.api.fileTemplates();
     } catch {
       /* keep fallback */
     }
@@ -141,8 +138,9 @@ export class CreateForm {
         body["typeName"] = this.typeNameInput.value.trim() || this.fileBaseName();
       }
     }
-    const result = await this.api.create(body);
-    if (!result.ok) {
+    try {
+      await this.api.create(body);
+    } catch {
       this.fail(t("create.failed"));
       return;
     }
