@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { Graph } from "../core";
+import { ComplexityAnalyzer } from "../core/ComplexityAnalyzer";
 import { RepoSession } from "./repo/RepoSession";
 import { TaskStore } from "./task/TaskStore";
 import { AutoProcessor } from "./processing/AutoProcessor";
@@ -16,6 +17,7 @@ import type {
   AutoStatus,
   BehaviorSummary,
   CodingPreferences,
+  ComplexityReport,
   EnqueuePayload,
   FileOpener,
   Task,
@@ -56,6 +58,8 @@ import {
   SourceCommand,
   UpdateTaskCommand,
   EditRequestCommand,
+  EditMessageCommand,
+  ComplexityCommand,
   OpenFileCommand,
 } from "./commands";
 
@@ -80,6 +84,7 @@ export class CoreService {
   private readonly scaffolder = new Scaffolder();
   private readonly browser = new DirectoryBrowser();
   private readonly git = new GitInspector();
+  private readonly complexityAnalyzer = new ComplexityAnalyzer();
   private readonly commands: CommandRegistry;
   private readonly funnel = new ExceptionFunnel();
 
@@ -113,11 +118,13 @@ export class CoreService {
       new EnqueueTaskCommand(this),
       new UpdateTaskCommand(this),
       new EditRequestCommand(this),
+      new EditMessageCommand(this),
       new DeleteTaskCommand(this),
       new CreateCommand(this),
       new GetPreferencesCommand(this),
       new SavePreferencesCommand(this),
       new BehaviorSummaryCommand(this),
+      new ComplexityCommand(this),
     ]);
   }
 
@@ -224,6 +231,12 @@ export class CoreService {
     return { tasks: this.tasks.read() };
   }
 
+  // Static complexity metrics for a method's source — drives the Folder "explain" drawer
+  // and the Changes method detail. Pure: no disk, no tokens, deterministic.
+  complexity(code: string, name: string): { report: ComplexityReport } {
+    return { report: this.complexityAnalyzer.analyze(code, name) };
+  }
+
   enqueueTask(payload: EnqueuePayload): { task: Task } {
     const task = this.tasks.enqueue(payload);
     this.autoProcessor.notify();
@@ -241,6 +254,15 @@ export class CoreService {
 
   editRequest(id: string, description: string): { task: Task } {
     const task = this.tasks.editRequest(id, description);
+    if (!task) {
+      throw new RequestNotFoundException(id);
+    }
+    this.autoProcessor.notify();
+    return { task };
+  }
+
+  editMessage(id: string, index: number, text: string): { task: Task } {
+    const task = this.tasks.editMessage(id, index, text);
     if (!task) {
       throw new RequestNotFoundException(id);
     }

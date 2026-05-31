@@ -143,9 +143,12 @@ export class App {
     graph: "viewport",
     folder: "tree",
     chat: "chat",
-    pending: "pending",
     changes: "changes",
   };
+
+  // Modes that own a top-bar button. Changes has none — it's opened only from a
+  // chat request's "View changes", so its section is shown without a tab to toggle.
+  private static readonly BUTTON_MODES: readonly ViewMode[] = ["graph", "folder", "chat"];
 
   // Manual re-scan: the file watcher can miss bulk/nested edits (e.g. a refactor
   // that creates new folders), leaving the graph stale — this forces a fresh analysis.
@@ -165,7 +168,9 @@ export class App {
     this.state.mode = mode;
     for (const [candidate, section] of Object.entries(App.SECTION_BY_MODE)) {
       byId(section).classList.toggle("hidden", candidate !== mode);
-      byId(`mode-${candidate}`).classList.toggle("active", candidate === mode);
+    }
+    for (const button of App.BUTTON_MODES) {
+      byId(`mode-${button}`).classList.toggle("active", button === mode);
     }
     byId("relayout").classList.toggle("hidden", mode !== "graph");
     this.applySearch();

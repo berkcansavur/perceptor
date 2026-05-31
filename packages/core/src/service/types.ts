@@ -271,6 +271,27 @@ export type BehaviorSummary = {
   at: string;
 }
 
+// One sample point of the cost curve: an input size n = 10^nExponent and the resulting
+// operation count ops = 10^opsExponent. Stored as exponents so the arithmetic stays
+// exact (no float overflow) — opsExponent is always nExponent * loopDepth.
+export type ComplexityScale = {
+  nExponent: number;
+  opsExponent: number;
+}
+
+// Static, deterministic complexity metrics for one method. `bigO` is derived from loop
+// nesting (and so labeled as such in the UI — it is a defensible upper bound from the
+// loop structure, not a proof of asymptotic complexity); `cyclomatic`, `loopDepth`,
+// `recursive` and `loc` are exact counts. `scale` is empty for O(1)/recursive.
+export type ComplexityReport = {
+  bigO: string;
+  cyclomatic: number;
+  loopDepth: number;
+  recursive: boolean;
+  loc: number;
+  scale: ComplexityScale[];
+}
+
 export type PreferredLanguage = "typescript" | "java" | "csharp";
 
 export type NamingPreferences = {

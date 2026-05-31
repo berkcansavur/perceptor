@@ -3,7 +3,6 @@ import type { Emitter } from "../Emitter";
 import type { Task } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
-import { isTaskCommitted, type GitState } from "../changes/commitState";
 import { usageBadge } from "../usageBadge";
 import { fromBehavior, fromClass, fromDir, specDescription, specName, toClass } from "../taskView";
 
@@ -106,6 +105,11 @@ export class TasksPanel {
   }
 
   private onListClick(event: MouseEvent): void {
+    const viewChat = closestEl<HTMLElement>(event.target, "[data-view-chat]");
+    if (viewChat) {
+      this.bus.emit("chat:select", viewChat.dataset.viewChat ?? "");
+      return;
+    }
     const stopEl = closestEl<HTMLElement>(event.target, "[data-stop]");
     if (stopEl) {
       void this.stop(stopEl.dataset.stop ?? "");
@@ -145,19 +149,6 @@ export class TasksPanel {
     }
   }
 
-  private async gitState(): Promise<GitState> {
-    try {
-      const status = await this.api.gitStatus();
-      return {
-        isRepo: status.isRepo,
-        dirtyFiles: new Set(status.dirtyFiles),
-        trackedFiles: new Set(status.trackedFiles),
-      };
-    } catch {
-      return { isRepo: false, dirtyFiles: new Set(), trackedFiles: new Set() };
-    }
-  }
-
   private awaitsClaude(task: Task): boolean {
     if (task.status === "pending" || task.status === "approved") {
       return true;
@@ -174,17 +165,15 @@ export class TasksPanel {
     } catch {
       return;
     }
-    const git = await this.gitState();
-    // The task-based operational view (every ister Claude works): in-flight + applied
-    // that isn't yet committed. Awaiting-approval (proposed) lives in the Pending tab;
-    // committed work in the Changes tab; both are excluded here.
+    // Tasks is Claude's live work queue: only what's running now (holds a process
+    // lock) or waiting on Claude (pending/approved, or a reply it hasn't answered).
+    // Finished work — applied, proposed-for-review, rejected — leaves the tab; those
+    // are reviewed from the chat request's "View changes", not here.
     tasks = tasks.filter(
       (task) =>
         !task.dismissed &&
         task.type !== "describe-behavior" &&
-        task.status !== "rejected" &&
-        task.status !== "proposed" &&
-        !isTaskCommitted(task, git)
+        (Boolean(task.lock) || this.awaitsClaude(task))
     );
     byId("tasks-count").textContent = String(tasks.length);
 
@@ -317,6 +306,7 @@ export class TasksPanel {
         }
         <span class="task-title">${title}</span>
         ${usageBadge(task.usage)}
+        <button class="task-viewchat" data-view-chat="${task.id}" title="${t("tasks.viewInChat")}">💬</button>
         ${
           isDone
             ? `<button class="task-dismiss" data-dismiss="${task.id}" title="${t("task.dismiss")}">×</button>`

@@ -3,14 +3,13 @@ import type { Emitter } from "../Emitter";
 import type { Task } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
-import { parseUnifiedDiff, type DiffHunk } from "./diffParser";
-import { buildChangeTree, type ChangeFolder, type ChangeStatus, type FileChange } from "./changeTree";
-import { isTaskCommitted, type GitState } from "./commitState";
-import { regionMessage } from "./regionMessage";
+import { buildChangeTree, sliceMethod, type ChangeFolder, type ChangeStatus, type FileChange } from "./changeTree";
+import { parseUnifiedDiff } from "./diffParser";
 import { roleLabel } from "../chat/roleLabel";
 import { usageBadge } from "../usageBadge";
 import { fromBehavior, fromClass, fromFile, specDescription, specName, specSignature, toClass, toFile } from "../taskView";
 import { roleColorHex } from "../graph/roleColors";
+import { complexityStrip } from "../complexity/complexityStrip";
 
 
 type BehaviorTarget = {
@@ -25,34 +24,32 @@ type BehaviorTarget = {
 const REFRESH_MS = 3000;
 const STATUS_MARKER: Record<ChangeStatus, string> = { add: "+", edit: "~", out: "−", in: "+" };
 const KEY_SEPARATOR = "::";
-
-type ChangeGroup = {
-  label: string;
-  scope: string;
-  tasks: Task[];
-}
+// An upper bound passed as the source API's "to" line so it returns the whole file; the
+// host clamps the slice to the real length, so any value past EOF reads the full file.
+const WHOLE_FILE = 1_000_000_000;
 
 function baseName(filePath: string): string {
   return filePath.split("/").pop() || filePath;
 }
 
-// Two tabs over the same per-ister change sets, split by git state:
-//   Pending   — proposed + applied-but-uncommitted changes (this session's work).
-//   Changes   — changes whose files are already committed (clean in git).
-// A change moves Pending → Changes once you commit it; with no git repo nothing is
-// ever "committed", so Changes stays empty. Each set expands to its line-by-line
-// diff; every hunk has an Ask/Modify box that sends a region-tagged request to Claude.
+// The Changes tab: ONE chat request's change set, opened only by clicking "View
+// changes" on that conversation — so it always shows exactly the changes that one
+// request produced, never a global list, and never reachable from the top bar. Each
+// change reads like Folder mode (the class with its new/edited/moved method, colour-
+// coded green/orange/red) and expands to its line-by-line diff; every hunk has an
+// Ask/Modify box that sends a region-tagged request back to Claude.
 export class ChangesView {
-  private readonly pendingTree = byId("pending-tree");
-  private readonly committedTree = byId("changes-tree");
+  private readonly tree = byId("changes-tree");
   private tasksById = new Map<string, Task>();
   private readonly openKeys = new Set<string>();
-  private dirtyFiles = new Set<string>();
-  private trackedFiles = new Set<string>();
-  private isRepo = false;
+  // Per-method change info, keyed by its detail key, so clicking a method can show its
+  // before/after/current panes and fetch its static complexity. Rebuilt on every render.
+  private methodInfoByKey = new Map<
+    string,
+    { code: string; oldCode: string; name: string; file: string; status: ChangeStatus }
+  >();
   private lastJson: string | null = null;
   private focusTaskId: string | null = null;
-  private focusJustSet = false;
 
   constructor(
     private readonly api: Api,
@@ -60,26 +57,24 @@ export class ChangesView {
   ) {}
 
   setup(): void {
-    for (const tree of [this.pendingTree, this.committedTree]) {
-      tree.addEventListener("click", (event) => this.onClick(event));
-      tree.addEventListener("keydown", (event) => this.onKeydown(event));
-    }
-    this.bus.on("changes:focus", (taskId) => {
-      this.focusTaskId = taskId;
-      this.focusJustSet = taskId !== null;
-      this.lastJson = null;
-      void this.refresh(true);
-    });
-    void this.refresh(true);
+    this.tree.addEventListener("click", (event) => this.onClick(event));
+    this.tree.addEventListener("keydown", (event) => this.onKeydown(event));
+    this.bus.on("changes:focus", (taskId) => this.focus(taskId));
     setInterval(() => void this.refresh(), REFRESH_MS);
   }
 
-  private onClick(event: MouseEvent): void {
-    const ask = closestEl<HTMLElement>(event.target, "[data-ask]");
-    if (ask) {
-      this.toggleAskBox(ask.dataset.ask ?? "");
-      return;
+  // Entered only from a chat request's "View changes": focus that one request and
+  // switch to the Changes tab. A null id (request lost its diff) just clears.
+  private focus(taskId: string | null): void {
+    this.focusTaskId = taskId;
+    this.lastJson = null;
+    if (taskId) {
+      this.bus.emit("mode:set", "changes");
     }
+    void this.refresh(true);
+  }
+
+  private onClick(event: MouseEvent): void {
     const approve = closestEl<HTMLElement>(event.target, "[data-approve]");
     if (approve) {
       void this.update(approve.dataset.approve ?? "", "approved");
@@ -90,12 +85,9 @@ export class ChangesView {
       void this.update(reject.dataset.reject ?? "", "rejected");
       return;
     }
-    if (closestEl<HTMLElement>(event.target, "[data-open-chat]")) {
-      this.bus.emit("mode:set", "chat");
-      return;
-    }
-    if (closestEl<HTMLElement>(event.target, "[data-show-all]")) {
-      this.bus.emit("changes:focus", null);
+    const openChat = closestEl<HTMLElement>(event.target, "[data-open-chat]");
+    if (openChat) {
+      this.bus.emit("chat:select", openChat.dataset.openChat ?? "");
       return;
     }
     const stopEl = closestEl<HTMLElement>(event.target, "[data-stop]");
@@ -105,15 +97,12 @@ export class ChangesView {
     }
     const dismissSet = closestEl<HTMLElement>(event.target, "[data-dismiss-set]");
     if (dismissSet) {
-      void this.archive([dismissSet.dataset.dismissSet ?? ""]);
+      void this.archive(dismissSet.dataset.dismissSet ?? "");
       return;
     }
-    const clearGroup = closestEl<HTMLElement>(event.target, "[data-clear-group]");
-    if (clearGroup) {
-      const group = closestEl<HTMLElement>(clearGroup, ".cgroup");
-      if (group) {
-        void this.clearScope(group);
-      }
+    const collapseFile = closestEl<HTMLElement>(event.target, "[data-collapse-file]");
+    if (collapseFile && collapseFile.parentElement) {
+      collapseFile.parentElement.classList.toggle("collapsed");
       return;
     }
     const toggle = closestEl<HTMLElement>(event.target, "[data-toggle]");
@@ -136,12 +125,6 @@ export class ChangesView {
     if (event.key !== "Enter") {
       return;
     }
-    const region = closestEl<HTMLInputElement>(event.target, "[data-ask-region]");
-    if (region && region.value.trim()) {
-      void this.ask(region.dataset.askTask ?? "", regionMessage(region.dataset.askRegion ?? "", region.value.trim()));
-      region.value = "";
-      return;
-    }
     const reply = closestEl<HTMLInputElement>(event.target, "[data-reply-task]");
     if (reply && reply.value.trim()) {
       void this.ask(reply.dataset.replyTask ?? "", reply.value.trim());
@@ -160,21 +143,15 @@ export class ChangesView {
     void this.refresh(true);
   }
 
-  // Archive (dismiss) change sets so they stop piling up — the records leave both
-  // tabs but the code is untouched. Used by per-set × and the tab's Clear button.
-  private async archive(ids: readonly string[]): Promise<void> {
-    for (const id of ids) {
-      if (id) {
-        await this.api.updateTask(id, { dismissed: true });
-      }
+  // Archive (dismiss) the change set so it stops showing — the record leaves the tab
+  // but the code is untouched. Used by the per-set × button.
+  private async archive(id: string): Promise<void> {
+    if (!id) {
+      return;
     }
+    await this.api.updateTask(id, { dismissed: true });
     this.bus.emit("toast", t("changes.archived"));
     void this.refresh(true);
-  }
-
-  private clearScope(tree: HTMLElement): Promise<void> {
-    const ids = [...tree.querySelectorAll<HTMLElement>("[data-cset]")].map((head) => head.dataset.cset ?? "");
-    return this.archive(ids);
   }
 
   // Interrupt one running task to stop spending tokens (others keep running).
@@ -185,122 +162,34 @@ export class ChangesView {
   }
 
   async refresh(force = false): Promise<void> {
+    if (!this.focusTaskId) {
+      return;
+    }
     let changes: Task[] = [];
     try {
       changes = (await this.api.tasks()).filter((task) => Boolean(task.diff) && !task.dismissed);
     } catch {
       return;
     }
-    await this.loadGitStatus();
     this.tasksById = new Map(changes.map((task) => [task.id, task]));
-    // Two tabs: Pending = this session's local work you can still observe/act on
-    // (proposed awaiting approval + applied-but-uncommitted); Changes = committed
-    // (git-based). An applied change stays in Pending — its diff is observable there —
-    // until you commit it, then it moves to Changes.
-    const committed = changes.filter((task) => isTaskCommitted(task, this.gitState()));
-    const pending = changes.filter((task) => this.isPending(task));
-
-    byId("pending-count").textContent = String(pending.length);
-    byId("changes-count").textContent = String(committed.length);
-    this.reflectTabVisibility("pending", "mode-pending", pending.length > 0);
-    this.reflectTabVisibility("changes", "mode-changes", committed.length > 0);
-    this.revealFocusTab(pending, committed);
-
-    const json = `${JSON.stringify(changes)}|${[...this.dirtyFiles].sort().join(",")}|${[...this.trackedFiles]
-      .sort()
-      .join(",")}|${this.isRepo}|${this.focusTaskId ?? ""}`;
-    const isTyping =
-      document.activeElement &&
-      (document.activeElement.closest("#pending") || document.activeElement.closest("#changes"));
+    const focused = changes.filter((task) => task.id === this.focusTaskId);
+    const json = JSON.stringify(focused);
+    const isTyping = document.activeElement && document.activeElement.closest("#changes");
     if (!force && (json === this.lastJson || isTyping)) {
       return;
     }
     this.lastJson = json;
-    this.renderGroups(this.pendingTree, [{ label: "", scope: "pending", tasks: pending }]);
-    this.renderGroups(this.committedTree, [{ label: "", scope: "committed", tasks: committed }]);
+    this.renderSets(focused);
     this.reopenDetails();
   }
 
-  // Local work still surfaced in the Pending tab: a proposal awaiting approval, or an
-  // applied change not yet committed (so its diff stays observable until it lands in git).
-  private isPending(task: Task): boolean {
-    if (task.status === "proposed") {
-      return true;
-    }
-    return task.status === "applied" && !isTaskCommitted(task, this.gitState());
-  }
-
-  private gitState(): GitState {
-    return { isRepo: this.isRepo, dirtyFiles: this.dirtyFiles, trackedFiles: this.trackedFiles };
-  }
-
-  private async loadGitStatus(): Promise<void> {
-    try {
-      const status = await this.api.gitStatus();
-      this.isRepo = status.isRepo;
-      this.dirtyFiles = new Set(status.dirtyFiles);
-      this.trackedFiles = new Set(status.trackedFiles);
-    } catch {
-      this.isRepo = false;
-      this.dirtyFiles = new Set();
-      this.trackedFiles = new Set();
-    }
-  }
-
-  private scoped(tasks: Task[]): Task[] {
-    return this.focusTaskId ? tasks.filter((task) => task.id === this.focusTaskId) : tasks;
-  }
-
-  // A chat request's "View changes" jumps to whichever tab now owns it — Pending while
-  // uncommitted, Changes once committed.
-  private revealFocusTab(pending: Task[], committed: Task[]): void {
-    if (!this.focusJustSet || !this.focusTaskId) {
+  private renderSets(tasks: Task[]): void {
+    this.methodInfoByKey.clear();
+    if (tasks.length === 0) {
+      this.tree.innerHTML = `<div class="changes-empty muted">${t("changes.empty")}</div>`;
       return;
     }
-    this.focusJustSet = false;
-    if (committed.some((task) => task.id === this.focusTaskId)) {
-      this.bus.emit("mode:set", "changes");
-    } else if (pending.some((task) => task.id === this.focusTaskId)) {
-      this.bus.emit("mode:set", "pending");
-    }
-  }
-
-  // A tab only exists while it has content. If the active one empties (and we're not
-  // focused on a specific request), fall back to Folder mode.
-  private reflectTabVisibility(section: string, modeButton: string, has: boolean): void {
-    byId(modeButton).classList.toggle("hidden", !has);
-    if (!has && !this.focusTaskId && !byId(section).classList.contains("hidden")) {
-      this.bus.emit("mode:set", "folder");
-    }
-  }
-
-  // Each task is its own change set — a request (or a drag-drop behavior change) is
-  // one unit of work, like a commit. Sets are grouped (e.g. task-based vs commit-based);
-  // each group has a Clear, and each set its own × — archiving only hides the record.
-  private renderGroups(tree: HTMLElement, groups: ChangeGroup[]): void {
-    const banner = this.renderFocusBanner();
-    const visible = groups
-      .map((group) => ({ ...group, tasks: this.scoped(group.tasks) }))
-      .filter((group) => group.tasks.length > 0);
-    if (visible.length === 0) {
-      tree.innerHTML = `${banner}<div class="changes-empty muted">${t("changes.empty")}</div>`;
-      return;
-    }
-    tree.innerHTML = banner + visible.map((group) => this.renderGroup(group)).join("");
-  }
-
-  private renderGroup(group: ChangeGroup): string {
-    const clear = this.focusTaskId
-      ? ""
-      : `<button class="changes-clear-btn" data-clear-group>${t("changes.clear")}</button>`;
-    const header = group.label
-      ? `<div class="cgroup-head"><span class="cgroup-label">${escapeHtml(group.label)}</span>${clear}</div>`
-      : `<div class="changes-clear-bar">${clear}</div>`;
-    const sets = [...group.tasks]
-      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
-      .map((task) => this.renderChangeSet(task))
-      .join("");
-    return `<div class="cgroup">${header}${sets}</div>`;
+    this.tree.innerHTML = tasks.map((task) => this.renderChangeSet(task)).join("");
   }
 
   private renderChangeSet(task: Task): string {
@@ -390,7 +279,7 @@ export class ChangesView {
 
   // Format a "name(params): returnType" signature with the Folder-mode parts/styles.
   private behaviorSignature(signature: string): string {
-    const match = /^\s*([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*:?\s*(.*)$/.exec(signature);
+    const match = /^\s*([A-Za-z0-9_]+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)\s*:?\s*(.*)$/.exec(signature);
     if (!match) {
       return `<span class="behavior-name">${escapeHtml(signature)}</span>`;
     }
@@ -401,16 +290,13 @@ export class ChangesView {
     )})</span>${ret ? ` <span class="behavior-return">${escapeHtml(ret)}</span>` : ""}`;
   }
 
-  // Fallback for a non-unified diff: colour +/- lines and keep the set actionable
-  // (impact, conversation, reply box, approve/reject).
+  // Fallback for a diff with no recognisable file/method structure: still avoid the
+  // interleaved git look — split it into a removed-side block and an added-side block —
+  // and keep the set actionable (impact, conversation, reply box, approve/reject).
   private renderRawChange(task: Task): string {
-    const lines = (task.diff ?? "")
-      .split("\n")
-      .map((line) => {
-        const kind = line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "context";
-        return `<div class="diff-line diff-${kind}">${escapeHtml(line || " ")}</div>`;
-      })
-      .join("");
+    const rows = (task.diff ?? "").split("\n");
+    const removed = rows.filter((line) => !line.startsWith("+")).map((line) => this.stripMarker(line)).join("\n");
+    const added = rows.filter((line) => !line.startsWith("-")).map((line) => this.stripMarker(line)).join("\n");
     const actions =
       task.status === "proposed"
         ? `<div class="changes-actions"><button class="primary" data-approve="${task.id}">${t(
@@ -419,24 +305,19 @@ export class ChangesView {
         : "";
     return `<div class="cset-raw">
         ${this.impactBlock(task)}
-        <div class="cset-rawdiff">${lines}</div>
+        <div class="cx-region">${this.codeBlock("changes.removed", "cx-before", removed)}${this.codeBlock(
+          "changes.added",
+          "cx-after",
+          added
+        )}</div>
         ${this.messagesBlock(task)}
         <input class="ctree-reply" data-reply-task="${task.id}" placeholder="${t("changes.reply")}" />
         ${actions}
       </div>`;
   }
 
-  // When opened from a chat request ("View changes"), the tab shows only that
-  // request's changes — its own change set. The banner clears back to all changes.
-  private renderFocusBanner(): string {
-    if (!this.focusTaskId) {
-      return "";
-    }
-    const task = this.tasksById.get(this.focusTaskId);
-    const label = task ? specDescription(task) || fromBehavior(task) : "";
-    return `<div class="changes-focus"><button class="changes-show-all" data-show-all>${t(
-      "changes.showAll"
-    )}</button><span class="changes-focus-label">${escapeHtml(label)}</span></div>`;
+  private stripMarker(line: string): string {
+    return line.startsWith("+") || line.startsWith("-") || line.startsWith(" ") ? line.slice(1) : line;
   }
 
   private renderFolder(folder: ChangeFolder, isRoot: boolean): string {
@@ -456,33 +337,63 @@ export class ChangesView {
     return isRoot ? `<div class="ctree-root">${children}</div>` : children;
   }
 
+  // A changed file rendered exactly like Folder mode: a CLASS row (the file = its class)
+  // coloured by create/edit/delete, then one behavior row per changed method
+  // (green +new / orange ~edited / red −deleted). The class row is a pure header — it only
+  // collapses its method list, it never dumps a file-level diff. Clicking a method reveals
+  // that method's before/after/current. A file whose diff touches no method (imports, SQL,
+  // config) falls back to a single file-reference row that opens its changed regions.
   private renderTreeFile(file: FileChange): string {
+    if (!file.taskId) {
+      return "";
+    }
+    const fileKey = this.key(file.taskId, file.path);
+    const className = baseName(file.path).replace(/\.[^.]+$/, "");
     const stat =
       file.added || file.removed
         ? `<span class="ctree-stat"><span class="diff-add-stat">+${file.added}</span><span class="diff-del-stat">−${file.removed}</span></span>`
         : "";
-    const isFileLeaf = Boolean(file.taskId);
-    const fileKey = file.taskId ? this.key(file.taskId, file.path) : "";
-    const fileRow = `<div class="ctree-row ctree-file-row${file.status ? ` change-${file.status}` : ""}"${
-      isFileLeaf ? ` data-toggle="${fileKey}"` : ""
-    }><span class="ctree-file-icon">${isFileLeaf ? "▸" : "›"}</span><span class="ctree-file-name">${escapeHtml(
-      baseName(file.path)
-    )}</span>${stat}</div>`;
-    const fileDetail = isFileLeaf ? `<div class="ctree-detail hidden" data-detail="${fileKey}"></div>` : "";
-    const methods = file.methods
-      .map((method) => {
-        const key = this.key(method.taskId, file.path);
-        return `<div class="ctree-method change-${method.status}" data-toggle="${key}"><span class="ctree-marker">${
+    const statusClass = file.status ? ` change-${file.status}` : "";
+    if (file.methods.length === 0) {
+      const referenceRow = `<div class="tree-row tree-class-row${statusClass}" style="border-left:3px solid ${roleColorHex(
+        className
+      )}" data-toggle="${fileKey}">
+          <span class="kind-badge kind-file">file</span>
+          <span class="tree-class-name">${escapeHtml(className)}</span>
+          ${stat}
+        </div>`;
+      return `<div class="ctree-file">${referenceRow}<div class="ctree-detail hidden" data-detail="${fileKey}"></div></div>`;
+    }
+    const classRow = `<div class="tree-row tree-class-row${statusClass}" style="border-left:3px solid ${roleColorHex(
+      className
+    )}" data-collapse-file>
+        <span class="ctree-caret">▾</span>
+        <span class="kind-badge kind-class">class</span>
+        <span class="tree-class-name">${escapeHtml(className)}</span>
+        <span class="tree-count">${file.methods.length}</span>
+        ${stat}
+      </div>`;
+    const behaviors = file.methods
+      .map((method, index) => {
+        const methodKey = `${fileKey}${KEY_SEPARATOR}${index}`;
+        this.methodInfoByKey.set(methodKey, {
+          code: method.code,
+          oldCode: method.oldCode,
+          name: method.name,
+          file: file.path,
+          status: method.status,
+        });
+        return `<div class="cset-behavior change-${method.status}" data-toggle="${methodKey}"><span class="ctree-marker">${
           STATUS_MARKER[method.status]
-        }</span><span class="ctree-method-name">${escapeHtml(method.label)}</span></div>
-        <div class="ctree-detail hidden" data-detail="${key}"></div>`;
+        }</span><span class="behavior-sig">${this.behaviorSignature(method.label)}</span></div>
+        <div class="ctree-detail hidden" data-detail="${methodKey}"></div>`;
       })
       .join("");
-    return `<div class="ctree-file">${fileRow}${fileDetail}${methods}</div>`;
+    return `<div class="ctree-file">${classRow}<div class="tree-behaviors">${behaviors}</div></div>`;
   }
 
   private query<T extends Element>(selector: string): T | null {
-    return this.pendingTree.querySelector<T>(selector) ?? this.committedTree.querySelector<T>(selector);
+    return this.tree.querySelector<T>(selector);
   }
 
   private toggleLeaf(key: string): void {
@@ -512,20 +423,118 @@ export class ChangesView {
   }
 
   private fillDetail(key: string, detail: HTMLElement): void {
-    const separator = key.indexOf(KEY_SEPARATOR);
-    const taskId = key.slice(0, separator);
-    const filePath = key.slice(separator + KEY_SEPARATOR.length);
+    const parts = key.split(KEY_SEPARATOR);
+    const taskId = parts[0] ?? "";
     const task = this.tasksById.get(taskId);
     if (!task) {
       return;
     }
-    detail.innerHTML = this.renderDetail(task, filePath);
+    const isMethod = parts.length >= 3;
+    detail.innerHTML = isMethod
+      ? `<div class="cx-host" data-cx-host="${key}"></div><div class="cx-code" data-cx-code="${key}"></div>${this.renderDetail(
+          task
+        )}`
+      : `${this.regionsHtml(task, parts[1] ?? "")}${this.renderDetail(task)}`;
     detail.classList.remove("hidden");
+    if (isMethod) {
+      void this.fillComplexity(key);
+      void this.fillCode(key);
+    }
   }
 
-  private renderDetail(task: Task, filePath: string): string {
-    const files = parseUnifiedDiff(task.diff ?? "").filter((file) => file.path === filePath);
-    const hunks = files.flatMap((file) => file.hunks);
+  // A clicked method shows its static complexity at the very top of the detail, above
+  // the existing explanation + chat. When the full method body isn't in the diff, we say
+  // so and point to Folder mode rather than computing on a fragment.
+  private async fillComplexity(key: string): Promise<void> {
+    const host = this.query<HTMLElement>(`[data-cx-host="${key}"]`);
+    if (!host) {
+      return;
+    }
+    const info = this.methodInfoByKey.get(key);
+    if (!info || !info.code) {
+      host.innerHTML = `<span class="cx-unavailable">${t("cx.unavailable")}</span>`;
+      return;
+    }
+    try {
+      const report = await this.api.complexity(info.code, info.name);
+      host.innerHTML = complexityStrip(report);
+    } catch {
+      host.innerHTML = "";
+    }
+  }
+
+  // The clicked method's code as separated panes — never an interleaved diff: its old
+  // body (Before), its new body (After), and the live on-disk body (Current, fetched and
+  // sliced by the same brace matcher). Each pane is shown only when its text exists, so a
+  // pure addition skips Before and a pure deletion skips After/Current.
+  private async fillCode(key: string): Promise<void> {
+    const host = this.query<HTMLElement>(`[data-cx-code="${key}"]`);
+    const info = this.methodInfoByKey.get(key);
+    if (!host || !info) {
+      return;
+    }
+    const before = this.codeBlock("changes.before", "cx-before", info.oldCode);
+    const after = this.codeBlock("changes.after", "cx-after", info.code);
+    host.innerHTML = before + after;
+    const current = await this.currentMethod(info.file, info.name, info.status);
+    host.innerHTML = before + after + this.codeBlock("changes.current", "cx-current", current);
+  }
+
+  // The method's current body straight from disk: read the file via the source API, then
+  // carve the named method out with the shared brace matcher. Empty for a deleted method
+  // (nothing left) or when the live file no longer holds a matching declaration.
+  private async currentMethod(file: string, name: string, status: ChangeStatus): Promise<string> {
+    if (status === "out" || !file || !name) {
+      return "";
+    }
+    try {
+      const content = await this.api.source(file, "1", String(WHOLE_FILE));
+      return sliceMethod(content, name);
+    } catch {
+      return "";
+    }
+  }
+
+  // One labelled code pane; blank when there's no code, so callers can concatenate panes
+  // without guarding each one.
+  private codeBlock(labelKey: string, variant: string, code: string): string {
+    if (!code.trim()) {
+      return "";
+    }
+    return `<div class="cx-block ${variant}"><div class="cx-block-label">${t(
+      labelKey
+    )}</div><pre class="cx-pre">${escapeHtml(code)}</pre></div>`;
+  }
+
+  // A file/non-method change as separated panes per hunk — the removed-side (context +
+  // deletions) above, the added-side (context + additions) below — so the reader sees the
+  // before and after as two clean blocks instead of an interleaved git diff. Hunks with no
+  // real change (before === after) are dropped.
+  private regionsHtml(task: Task, filePath: string): string {
+    const file = parseUnifiedDiff(task.diff ?? "").find((candidate) => candidate.path === filePath);
+    if (!file) {
+      return "";
+    }
+    return file.hunks
+      .map((hunk) => {
+        const before = hunk.lines.filter((line) => line.kind === "del" || line.kind === "context").map((line) => line.text).join("\n");
+        const after = hunk.lines.filter((line) => line.kind === "add" || line.kind === "context").map((line) => line.text).join("\n");
+        if (before === after) {
+          return "";
+        }
+        return `<div class="cx-region">${this.codeBlock("changes.removed", "cx-before", before)}${this.codeBlock(
+          "changes.added",
+          "cx-after",
+          after
+        )}</div>`;
+      })
+      .join("");
+  }
+
+  // A short, readable change card — NOT a raw git diff. Signature + a terse summary +
+  // impact, the conversation, a reply box to continue, and a "View in chat" jump. The
+  // line-level diff intentionally lives in the editor, not here.
+  private renderDetail(task: Task): string {
     const signatureText = specSignature(task);
     const signature = signatureText
       ? `<div class="changes-field"><span class="changes-field-label">${t(
@@ -547,50 +556,14 @@ export class ChangesView {
     return `<div class="ctree-detail-head">
         <span class="changes-type type-${task.type}">${this.typeLabel(task.type)}</span>
         <span class="status-badge status-${task.status}">${t("status." + task.status)}</span>
-        ${task.type === "request" ? `<button class="changes-open-chat" data-open-chat="${task.id}">${t("changes.viewTask")}</button>` : ""}
+        <button class="changes-open-chat" data-open-chat="${task.id}">${t("changes.viewInChat")}</button>
       </div>
       ${signature}
       ${summary}
       ${this.impactBlock(task)}
-      <div class="ctree-hunks">${hunks.map((hunk, index) => this.renderHunk(task, filePath, hunk, index)).join("")}</div>
       ${this.messagesBlock(task)}
       <input class="ctree-reply" data-reply-task="${task.id}" placeholder="${t("changes.reply")}" />
       ${actions}`;
-  }
-
-  private renderHunk(task: Task, filePath: string, hunk: DiffHunk, index: number): string {
-    const askKey = `${task.id}${KEY_SEPARATOR}${filePath}${KEY_SEPARATOR}${index}`;
-    const region = `${filePath} ${hunk.header}`;
-    const lines = hunk.lines
-      .map(
-        (line) =>
-          `<div class="diff-line diff-${line.kind}">${line.kind === "add" ? "+" : line.kind === "del" ? "-" : " "}${escapeHtml(
-            line.text
-          )}</div>`
-      )
-      .join("");
-    return `<div class="ctree-hunk">
-      <div class="diff-hunk-head"><span>${escapeHtml(hunk.header)}</span><button class="hunk-ask-btn" data-ask="${askKey}">💬 ${t(
-        "changes.ask"
-      )}</button></div>
-      ${lines}
-      <div class="hunk-ask hidden" data-ask-box="${askKey}">
-        <input class="hunk-ask-input" data-ask-task="${task.id}" data-ask-region="${escapeHtml(region)}" placeholder="${t(
-          "changes.askPlaceholder"
-        )}" />
-      </div>
-    </div>`;
-  }
-
-  private toggleAskBox(askKey: string): void {
-    const box = this.query<HTMLElement>(`[data-ask-box="${askKey}"]`);
-    if (!box) {
-      return;
-    }
-    box.classList.toggle("hidden");
-    if (!box.classList.contains("hidden")) {
-      box.querySelector<HTMLInputElement>(".hunk-ask-input")?.focus();
-    }
   }
 
   private messagesBlock(task: Task): string {

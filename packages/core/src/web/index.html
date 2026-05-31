@@ -15,8 +15,6 @@
         <button id="mode-graph" class="active" data-i18n="mode.graph">Graph</button>
         <button id="mode-folder" data-i18n="mode.folder">Folder</button>
         <button id="mode-chat" data-i18n="mode.chat">Chat</button>
-        <button id="mode-pending" class="hidden"><span data-i18n="mode.pending">Pending</span> <span id="pending-count">0</span></button>
-        <button id="mode-changes" class="hidden"><span data-i18n="mode.changes">Changes</span> <span id="changes-count">0</span></button>
       </div>
       <button id="reanalyze" data-i18n="btn.reanalyze" title="Refresh indexing">Refresh</button>
       <input id="search" type="search" data-i18n-placeholder="search.placeholder" />
@@ -48,16 +46,17 @@
         <span id="chat-auto-label" data-i18n="auto.label">Auto-process (uses Claude tokens)</span>
         <span id="chat-auto-status" class="muted"></span>
       </label>
-      <div id="chat-thread"></div>
-      <div id="chat-hint" class="hidden"></div>
-      <div id="chat-composer">
-        <textarea id="chat-input" rows="2" data-i18n-placeholder="chat.placeholder"></textarea>
-        <button id="chat-send" class="primary" data-i18n="chat.send">Send</button>
+      <div id="chat-body">
+        <div id="chat-list"></div>
+        <div id="chat-main">
+          <div id="chat-thread"></div>
+          <div id="chat-hint" class="hidden"></div>
+          <div id="chat-composer">
+            <textarea id="chat-input" rows="2" data-i18n-placeholder="chat.placeholder"></textarea>
+            <button id="chat-send" class="primary" data-i18n="chat.send">Send</button>
+          </div>
+        </div>
       </div>
-    </section>
-
-    <section id="pending" class="hidden">
-      <div id="pending-tree"></div>
     </section>
 
     <section id="changes" class="hidden">
@@ -70,6 +69,10 @@
         <button id="behavior-drawer-close" title="Close">×</button>
       </div>
       <code id="behavior-drawer-sig"></code>
+      <div class="behavior-drawer-section">
+        <div class="behavior-drawer-label" data-i18n="cx.heading">Complexity</div>
+        <div id="behavior-drawer-complexity" class="cx-unavailable"></div>
+      </div>
       <div class="behavior-drawer-section">
         <div class="behavior-drawer-label" data-i18n="changes.summary">What it does</div>
         <div id="behavior-drawer-summary" class="behavior-drawer-summary muted"></div>

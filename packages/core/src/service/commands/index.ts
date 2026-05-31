@@ -17,6 +17,8 @@ export { ListTasksCommand } from "./ListTasksCommand";
 export { EnqueueTaskCommand } from "./EnqueueTaskCommand";
 export { UpdateTaskCommand } from "./UpdateTaskCommand";
 export { EditRequestCommand } from "./EditRequestCommand";
+export { EditMessageCommand } from "./EditMessageCommand";
+export { ComplexityCommand } from "./ComplexityCommand";
 export { DeleteTaskCommand } from "./DeleteTaskCommand";
 export { OpenFileCommand } from "./OpenFileCommand";
 export { CreateCommand } from "./CreateCommand";

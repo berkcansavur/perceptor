@@ -151,6 +151,33 @@ export class TaskStore {
     return task;
   }
 
+  // Edit a message already in a request's thread and re-run from that point: the text
+  // is rewritten, every later turn (Claude's reply and anything after) is dropped, and
+  // the task resets to re-run cold from the corrected conversation. `usage` is kept so
+  // the token total keeps climbing across the edit. Only user messages are editable.
+  editMessage(id: string, index: number, text: string): Task | null {
+    const tasks = this.read();
+    const task = tasks.find((item) => item.id === id);
+    if (!task || task.type !== "request") {
+      return null;
+    }
+    const message = task.messages[index];
+    if (!message || message.role !== "user") {
+      return null;
+    }
+    message.text = text;
+    task.messages = task.messages.slice(0, index + 1);
+    task.status = "pending";
+    task.diff = null;
+    task.impact = null;
+    task.commitMessage = null;
+    task.auto = null;
+    task.sessionId = null;
+    task.updatedAt = new Date().toISOString();
+    this.write(tasks);
+    return task;
+  }
+
   delete(id: string): void {
     this.write(this.read().filter((task) => task.id !== id));
   }

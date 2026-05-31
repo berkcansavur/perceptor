@@ -1140,6 +1140,26 @@ body.tasks-open #behavior-drawer {
   color: var(--text);
 }
 
+.task-viewchat {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.task-viewchat:hover {
+  color: var(--accent);
+}
+
+/* When both buttons show, the view-chat one takes the auto margin and dismiss sits flush. */
+.task-viewchat + .task-dismiss {
+  margin-left: 0;
+}
+
 .task-title {
   font-size: 12px;
   font-weight: 600;
@@ -1473,6 +1493,88 @@ body.tasks-open #behavior-drawer {
   margin-left: auto;
 }
 
+/* Claude-Desktop layout: a conversation list on the left, the selected thread + its
+   composer on the right. */
+#chat-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#chat-list {
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.conv-new {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.conv-new:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.conv-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 9px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  width: 100%;
+}
+
+.conv-item:hover {
+  background: var(--panel-2);
+}
+
+.conv-item.active {
+  background: var(--panel-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.conv-title {
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conv-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 #chat-thread {
   flex: 1;
   overflow-y: auto;
@@ -1512,7 +1614,8 @@ body.tasks-open #behavior-drawer {
   max-width: 85%;
 }
 
-/* Pencil affordance to re-edit a request — quiet until the bubble is hovered. */
+/* Pencil affordance to re-edit any sent message — always visible (subtle), bright on
+   hover. */
 .chat-edit-btn {
   border: none;
   background: transparent;
@@ -1521,19 +1624,18 @@ body.tasks-open #behavior-drawer {
   margin-left: 6px;
   font-size: 12px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.chat-user:hover .chat-edit-btn {
-  opacity: 1;
+  opacity: 0.6;
+  transition: opacity 0.12s, color 0.12s;
 }
 
 .chat-edit-btn:hover {
+  opacity: 1;
   color: var(--accent);
 }
 
 .chat-editing {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -1618,37 +1720,6 @@ body.tasks-open #behavior-drawer {
   opacity: 1;
 }
 
-#changes-tree .changes-focus,
-#pending-tree .changes-focus {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  margin-bottom: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel-2);
-  font-family: -apple-system, system-ui, sans-serif;
-}
-
-.changes-show-all {
-  font-size: 12px;
-  color: var(--accent);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.changes-focus-label {
-  font-size: 12px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .chat-reply {
   width: 100%;
   background: var(--panel-2);
@@ -1713,8 +1784,7 @@ body.tasks-open #behavior-drawer {
   border-color: var(--accent);
 }
 
-#changes,
-#pending {
+#changes {
   position: absolute;
   top: 46px;
   left: 0;
@@ -1729,8 +1799,7 @@ body.tasks-open #behavior-drawer {
   font-size: 13px;
 }
 
-#changes-tree:not(:empty),
-#pending-tree:not(:empty) {
+#changes-tree:not(:empty) {
   font-family: "SF Mono", ui-monospace, Menlo, monospace;
   font-size: 12px;
 }
@@ -1891,15 +1960,136 @@ body.tasks-open #behavior-drawer {
   color: #6a9955;
 }
 
-.cset-raw {
-  padding: 4px 0 0;
+.cset-behavior.change-out .ctree-marker {
+  color: #c98a8a;
 }
 
-.cset-rawdiff {
+/* Colour the method signature and the class row by change status — so the Changes
+   tree reads like Folder mode but tells add/edit/delete apart at a glance. Scoped to
+   #changes so the real Folder tab keeps its neutral colours. */
+#changes .cset-behavior.change-add .behavior-name,
+#changes .cset-behavior.change-in .behavior-name {
+  color: #6a9955;
+}
+
+#changes .cset-behavior.change-edit .behavior-name {
+  color: #d7ba7d;
+}
+
+#changes .cset-behavior.change-out .behavior-name {
+  color: #c98a8a;
+}
+
+#changes .tree-class-row.change-add .tree-class-name {
+  color: #6a9955;
+}
+
+#changes .tree-class-row.change-edit .tree-class-name {
+  color: #d7ba7d;
+}
+
+#changes .tree-class-row.change-out .tree-class-name {
+  color: #c98a8a;
+}
+
+/* Complexity metrics strip (Folder explain + Changes detail). */
+.cx-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.cx-chip {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.cx-chip.cx-bigo {
+  font-weight: 700;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.cx-chip.cx-warn {
+  color: #d7a85f;
+  border-color: #d7a85f;
+}
+
+.cx-scale {
+  margin-top: 6px;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.cx-note {
+  color: var(--muted);
+}
+
+.cx-unavailable {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Before / After / Current panes — separated code blocks, never an interleaved diff. */
+.cx-code,
+.cx-region {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 8px 4px;
+}
+
+.cx-block {
   border: 1px solid var(--border);
   border-radius: 7px;
   overflow: hidden;
-  margin: 4px 8px 8px;
+  border-left-width: 3px;
+}
+
+.cx-block.cx-before {
+  border-left-color: #c98a8a;
+}
+
+.cx-block.cx-after {
+  border-left-color: #6a9955;
+}
+
+.cx-block.cx-current {
+  border-left-color: var(--accent);
+}
+
+.cx-block-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 4px 8px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.cx-pre {
+  margin: 0;
+  padding: 8px 10px;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text);
+  background: var(--panel);
+}
+
+.cset-raw {
+  padding: 4px 0 0;
 }
 
 .ctree-children {
@@ -1926,8 +2116,7 @@ body.tasks-open #behavior-drawer {
   background: var(--panel-2);
 }
 
-.ctree-caret,
-.ctree-file-icon {
+.ctree-caret {
   color: var(--muted);
   font-size: 10px;
   width: 10px;
@@ -1938,36 +2127,10 @@ body.tasks-open #behavior-drawer {
   font-weight: 600;
 }
 
-.ctree-file-name {
-  color: var(--text);
-}
-
-.ctree-file-row.change-add .ctree-file-name {
-  color: #6a9955;
-}
-
-.ctree-file-row.change-edit .ctree-file-name {
-  color: #d7a85f;
-}
-
 .ctree-stat {
   margin-left: auto;
   display: flex;
   gap: 7px;
-}
-
-.ctree-method {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 22px;
-  padding: 2px 6px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.ctree-method:hover {
-  background: var(--panel-2);
 }
 
 .ctree-marker {
@@ -1975,32 +2138,6 @@ body.tasks-open #behavior-drawer {
   text-align: center;
   font-weight: 700;
   flex-shrink: 0;
-}
-
-.ctree-method.change-add,
-.ctree-method.change-in {
-  color: #6a9955;
-}
-
-.ctree-method.change-add .ctree-marker,
-.ctree-method.change-in .ctree-marker {
-  color: #6a9955;
-}
-
-.ctree-method.change-edit {
-  color: #d7a85f;
-}
-
-.ctree-method.change-edit .ctree-marker {
-  color: #d7a85f;
-}
-
-.ctree-method.change-out {
-  color: #c98a8a;
-}
-
-.ctree-method.change-out .ctree-marker {
-  color: #c98a8a;
 }
 
 .ctree-detail {
@@ -2215,36 +2352,6 @@ body.tasks-open #behavior-drawer {
   color: #f14c4c;
 }
 
-.diff-hunk-head {
-  padding: 3px 12px;
-  color: var(--muted);
-  background: rgba(117, 190, 255, 0.06);
-}
-
-.diff-line {
-  padding: 1px 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.diff-add {
-  background: rgba(106, 153, 85, 0.16);
-  color: #b5cea8;
-}
-
-.diff-del {
-  background: rgba(241, 76, 76, 0.14);
-  color: #f4a6a6;
-}
-
-.diff-context {
-  color: var(--text);
-}
-
-.diff-meta {
-  color: var(--muted);
-}
-
 .tree-children {
   margin-left: 16px;
   border-left: 1px solid var(--border);
@@ -2301,6 +2408,24 @@ body.tasks-open #behavior-drawer {
   display: none;
   margin-left: 34px;
   padding: 2px 0 6px;
+}
+
+/* Changes mode: a class header always shows its method rows (Folder-style), collapsing
+   only when its file row is toggled. */
+#changes .ctree-file > .tree-behaviors {
+  display: block;
+}
+
+#changes .ctree-file.collapsed > .tree-behaviors {
+  display: none;
+}
+
+#changes .ctree-file.collapsed > .tree-class-row .ctree-caret {
+  transform: rotate(-90deg);
+}
+
+#changes .ctree-caret {
+  transition: transform 0.12s ease;
 }
 
 .tree-class.expanded > .tree-behaviors {

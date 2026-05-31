@@ -6,6 +6,7 @@ import type {
   BehaviorSummary,
   BrowseData,
   CodingPreferences,
+  ComplexityReport,
   Graph,
   MetaResponse,
   Task,
@@ -38,10 +39,12 @@ type ApiContract = {
   enqueueTask: { task: Task };
   updateTask: { task: Task };
   editRequest: { task: Task };
+  editMessage: { task: Task };
   deleteTask: { id: string };
   getPreferences: { preferences: CodingPreferences };
   savePreferences: { preferences: CodingPreferences };
   behaviorSummary: { summary: BehaviorSummary | null };
+  complexity: { report: ComplexityReport };
   create: { stats: Graph["stats"] };
   autoStatus: AutoStatus;
   autoActivity: { activities: AutoActivity[] };
@@ -68,10 +71,12 @@ export interface Api {
   updateTask(id: string, payload: Record<string, unknown>): Promise<void>;
   deleteTask(id: string): Promise<void>;
   editRequest(id: string, description: string): Promise<void>;
+  editMessage(id: string, index: number, text: string): Promise<void>;
   getPreferences(): Promise<CodingPreferences>;
   savePreferences(preferences: CodingPreferences): Promise<void>;
   sendRequest(description: string): Promise<void>;
   behaviorSummary(file: string, behavior: string): Promise<BehaviorSummary | null>;
+  complexity(code: string, name: string): Promise<ComplexityReport>;
   describeBehavior(context: {
     className: string;
     file: string;
@@ -196,6 +201,12 @@ export class ApiClient implements Api {
     await this.call("editRequest", { id, description });
   }
 
+  // Edit a message already in the thread and re-run from that point — later turns are
+  // dropped on the host. The task keeps its id and accumulated token usage.
+  async editMessage(id: string, index: number, text: string): Promise<void> {
+    await this.call("editMessage", { id, index, description: text });
+  }
+
   async getPreferences(): Promise<CodingPreferences> {
     const { preferences } = await this.call("getPreferences");
     return preferences;
@@ -214,6 +225,11 @@ export class ApiClient implements Api {
   async behaviorSummary(file: string, behavior: string): Promise<BehaviorSummary | null> {
     const { summary } = await this.call("behaviorSummary", { file, behavior });
     return summary;
+  }
+
+  async complexity(code: string, name: string): Promise<ComplexityReport> {
+    const { report } = await this.call("complexity", { code, name });
+    return report;
   }
 
   // Asks Claude to summarize a method; the skill writes it to the cache the drawer

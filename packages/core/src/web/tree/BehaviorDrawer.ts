@@ -3,6 +3,7 @@ import type { Emitter } from "../Emitter";
 import type { AppEvents } from "../types";
 import { byId } from "../dom";
 import { t } from "../i18n";
+import { complexityStrip } from "../complexity/complexityStrip";
 
 type BehaviorContext = AppEvents["behavior:open"];
 
@@ -41,21 +42,38 @@ export class BehaviorDrawer {
     byId("behavior-drawer-title").textContent = `${payload.behavior}()  ·  ${payload.className}`;
     byId("behavior-drawer-sig").textContent = payload.signature;
     byId("behavior-drawer-code").textContent = "";
+    byId("behavior-drawer-complexity").innerHTML = "";
     this.drawer.classList.remove("hidden");
     document.body.classList.add("behavior-open");
     void this.loadSource();
     void this.loadSummary();
   }
 
+  // Fetch the method source once, show it, and derive its static complexity from the
+  // very same text (no second round trip for the body).
   private async loadSource(): Promise<void> {
+    let code = "";
     try {
-      byId("behavior-drawer-code").textContent = await this.api.source(
-        this.context.file,
-        this.context.line,
-        this.context.endLine
-      );
+      code = await this.api.source(this.context.file, this.context.line, this.context.endLine);
     } catch {
-      byId("behavior-drawer-code").textContent = "";
+      code = "";
+    }
+    byId("behavior-drawer-code").textContent = code;
+    await this.loadComplexity(code);
+  }
+
+  private async loadComplexity(code: string): Promise<void> {
+    const element = byId("behavior-drawer-complexity");
+    if (!code) {
+      element.textContent = "";
+      return;
+    }
+    try {
+      const report = await this.api.complexity(code, this.context.behavior);
+      element.classList.remove("cx-unavailable");
+      element.innerHTML = complexityStrip(report);
+    } catch {
+      element.textContent = "";
     }
   }
 

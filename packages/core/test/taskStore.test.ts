@@ -76,3 +76,54 @@ describe("TaskStore.editRequest", () => {
     expect(store.editRequest(folder.id, "nope")).toBeNull();
   });
 });
+
+describe("TaskStore.editMessage", () => {
+  function withThread(): string {
+    const task = store.enqueue(request("first ask"));
+    store.update({ ...propose(task.id, "--- a/x\n+++ b/x\n") });
+    store.mutate(task.id, (item) => {
+      item.sessionId = "sess-1";
+      item.messages.push({ role: "user", text: "do A", at: "2026-01-01T00:00:00Z" });
+      item.messages.push({ role: "claude", text: "did A", at: "2026-01-01T00:01:00Z" });
+      item.messages.push({ role: "user", text: "do B", at: "2026-01-01T00:02:00Z" });
+    });
+    return task.id;
+  }
+
+  it("rewrites a message, drops later turns, and resets to re-run cold", () => {
+    const id = withThread();
+
+    const edited = store.editMessage(id, 0, "do A differently");
+
+    expect(edited?.status).toBe("pending");
+    const stored = store.read()[0];
+    expect(stored?.messages).toEqual([{ role: "user", text: "do A differently", at: "2026-01-01T00:00:00Z" }]);
+    expect(stored?.diff).toBeNull();
+    expect(stored?.sessionId).toBeNull();
+  });
+
+  it("preserves token usage across a message edit", () => {
+    const id = withThread();
+    store.mutate(id, (item) => {
+      item.usage = {
+        inputTokens: 80,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        costUsd: 0.02,
+        runs: 2,
+        at: "2026-01-01T00:00:00Z",
+      };
+    });
+
+    store.editMessage(id, 0, "revised");
+
+    expect(store.read()[0]?.usage?.runs).toBe(2);
+  });
+
+  it("refuses to edit a claude message or an out-of-range index", () => {
+    const id = withThread();
+    expect(store.editMessage(id, 1, "nope")).toBeNull();
+    expect(store.editMessage(id, 9, "nope")).toBeNull();
+  });
+});

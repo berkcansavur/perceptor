@@ -7,6 +7,8 @@ export type {
   AutoStatus,
   BehaviorSummary,
   CodingPreferences,
+  ComplexityReport,
+  ComplexityScale,
   NamingPreferences,
   PreferredLanguage,
   QualityGatePreferences,
@@ -33,7 +35,7 @@ export type { ApiResponse, ApiError } from "../service/api";
 
 import type { BehaviorEndpoint, ClassFileEndpoint } from "../service/types";
 
-export type ViewMode = "graph" | "folder" | "chat" | "pending" | "changes";
+export type ViewMode = "graph" | "folder" | "chat" | "changes";
 
 export type FolderColor = {
   accent: string;
@@ -116,6 +118,7 @@ export type AppEvents = {
   "tasks:refresh": void;
   "auto:changed": void;
   "changes:focus": string | null;
+  "chat:select": string;
   "search:changed": void;
   "lang:changed": void;
   "toast": string;

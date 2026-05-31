@@ -194,9 +194,11 @@ export class AutoProcessor {
     return new Set([...this.activeRuns.values()].flatMap((active) => [...active.footprint]));
   }
 
-  // A task to spawn Claude for: a fresh pending/approved one, or a non-terminal task
-  // the user just replied to (re-send after an error/proposal). One attempt per
-  // state — TaskStore clears `auto` on a user message, which re-opens the gate.
+  // A task to spawn Claude for: a fresh pending/approved one, or ANY task whose last
+  // message is a user reply it hasn't answered yet — including an already-applied one.
+  // Replying to an applied change continues the SAME session (its sessionId is kept on a
+  // plain reply), so Claude has the prior context and the follow-up costs fewer tokens.
+  // One attempt per state — TaskStore clears `auto` on a user message, re-opening the gate.
   private isActionable(task: Task): boolean {
     if (task.dismissed) {
       return false;
@@ -206,9 +208,6 @@ export class AutoProcessor {
     }
     if (ACTIONABLE_STATUSES.has(task.status)) {
       return true;
-    }
-    if (task.status === "applied" || task.status === "rejected") {
-      return false;
     }
     const lastMessage = task.messages[task.messages.length - 1];
     return Boolean(lastMessage && lastMessage.role === "user");
