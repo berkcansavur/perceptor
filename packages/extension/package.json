@@ -57,11 +57,6 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically enable Auto-process when the panel opens. Off by default to avoid spending Claude tokens unexpectedly."
-        },
-        "repoVisualiser.port": {
-          "type": "number",
-          "default": 0,
-          "description": "Port for the local server (0 = pick a free port automatically)."
         }
       }
     }

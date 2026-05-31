@@ -24,7 +24,7 @@ local Claude — no server, no hosted backend, your tokens.
 | C# | class, interface, enum, struct, record, **delegate** |
 
 Adding a language is localized (Open/Closed): register it in
-`packages/core/src/core/languageRegistry.ts` and add an extractor under
+`packages/core/src/core/LanguageRegistry.ts` and add an extractor under
 `packages/core/src/core/extractors/`.
 
 ## Repository layout

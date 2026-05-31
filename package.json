@@ -11,7 +11,7 @@
   "scripts": {
     "build": "npm run build -w repo-visualiser && npm run compile -w repo-visualiser-vscode",
     "build:core": "npm run build -w repo-visualiser",
-    "check-types": "npm run check-types -w repo-visualiser && npm run check-types -w repo-visualiser-vscode",
+    "check-types": "npm run build:core && npm run check-types -w repo-visualiser && npm run check-types -w repo-visualiser-vscode",
     "test": "npm run test -w repo-visualiser && npm run test -w repo-visualiser-vscode",
     "start": "npm run start -w repo-visualiser",
     "package": "bash scripts/pack-extension.sh",

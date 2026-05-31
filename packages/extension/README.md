@@ -10,6 +10,17 @@ rendered right inside VS Code.
   the map; the work is carried out by *your own* local Claude. No server, no
   hosted backend, your tokens.
 
+## Quick start (3 steps)
+
+1. **Get the file** — `repo-visualiser-vscode-<version>.vsix`.
+2. **Install it** — open VS Code → **Extensions** panel (left sidebar) → click the
+   **`…`** menu at the top → **Install from VSIX…** → pick the file.
+3. **Open the map** — open any project folder, then click **Repo Visualiser** in the
+   bottom status bar (or press `Cmd/Ctrl+Shift+P` and run **Repo Visualiser: Open**).
+
+That's it — the map appears and updates by itself. *(Optional: the AI edit features
+need the free `claude` CLI installed; the map works fine without it.)*
+
 ## Installation
 
 No Marketplace account needed — it ships as a single `.vsix` file.

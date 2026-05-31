@@ -7,24 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Chat-driven changes**: describe a change in plain language; Claude proposes a
-  diff you approve, with per-region "ask/modify" and impact analysis.
-- **Pending vs Changes tabs**: Pending shows this session's not-yet-committed work;
-  Changes shows committed work (git-based). Archive sets individually or Clear a tab.
-- **Whole-repo map**: every file becomes a node — class-less code as a *module*
-  node (top-level functions), plus *config* (package.json scripts, Dockerfile
-  stages) and *file* nodes; class-less files are icon-marked in the graph card.
+- **Chat-driven changes**: describe a change in plain language and Claude proposes
+  it, with impact analysis. Each conversation has its own thread (Claude-Desktop-style
+  sidebar); edit any message you sent to re-run from that point, and applied
+  conversations keep going in the same session.
+- **Method-level change review**: a changed file reads like Folder mode — its class
+  with the methods that changed beneath it (green added / orange edited / red removed).
+  Click a method to see its **before**, **after**, and **current on-disk** code as
+  separate panes — never an interleaved diff.
+- **Static complexity metrics** (Big-O, cyclomatic complexity, loop nesting, LOC)
+  shown on a method in the Folder "Explain" drawer and in the change review.
 - **Coding Preferences** form so generated code follows your house style.
 - **Full-stack localisation** (EN/TR): the UI and Claude's generated text follow a
   single locale.
 
-### Fixed
-- Method "Explain" now polls for and shows Claude's summary.
-- Live "what Claude is doing" status in the Tasks panel.
-- Correct git commit detection when the folder is a subdirectory of a larger repo.
-
 ### Changed
-- Packaged `.vsix` slimmed to the shipped grammars (~1 MB).
+- **Self-contained `.vsix`**: the extension now bundles the core analyzer and
+  tree-sitter and ships its own grammars/webview assets, so it installs and runs on
+  any machine with no `npm install` and no local server.
+- The Tasks panel lists only currently running / queued work; "View in chat" jumps
+  from a task or a change straight to its conversation.
+
+### Removed
+- The separate "Pending" tab and the git-based "committed changes" view.
+- Raw unified-diff rendering and the per-region "ask/modify" box — change review is
+  now method-level off a chat conversation.
 
 ## [0.1.0] - 2026-05-30
 

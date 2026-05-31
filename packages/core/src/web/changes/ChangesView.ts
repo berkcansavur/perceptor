@@ -35,9 +35,9 @@ function baseName(filePath: string): string {
 // The Changes tab: ONE chat request's change set, opened only by clicking "View
 // changes" on that conversation — so it always shows exactly the changes that one
 // request produced, never a global list, and never reachable from the top bar. Each
-// change reads like Folder mode (the class with its new/edited/moved method, colour-
-// coded green/orange/red) and expands to its line-by-line diff; every hunk has an
-// Ask/Modify box that sends a region-tagged request back to Claude.
+// change reads like Folder mode (the class with its added/edited/removed methods,
+// colour-coded green/orange/red); clicking a method reveals its before / after /
+// current-on-disk code as separate panes plus its static complexity — never a raw diff.
 export class ChangesView {
   private readonly tree = byId("changes-tree");
   private tasksById = new Map<string, Task>();
