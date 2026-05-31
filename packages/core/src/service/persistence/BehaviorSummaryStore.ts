@@ -38,8 +38,8 @@ export class BehaviorSummaryStore {
     all[this.key(file, behavior)] = { text, at: new Date().toISOString() };
     const target = this.file();
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    const tmp = `${target}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(all, null, 2));
-    fs.renameSync(tmp, target);
+    const temporaryFile = `${target}.${process.pid}.tmp`;
+    fs.writeFileSync(temporaryFile, JSON.stringify(all, null, 2));
+    fs.renameSync(temporaryFile, target);
   }
 }

@@ -55,9 +55,9 @@ export class OpenRepoModal {
         void this.openRepo(openButton.dataset.open ?? "");
         return;
       }
-      const item = closestEl<HTMLElement>(event.target, ".browse-item");
-      if (item) {
-        void this.loadBrowse(item.dataset.path ?? null);
+      const browseItem = closestEl<HTMLElement>(event.target, ".browse-item");
+      if (browseItem) {
+        void this.loadBrowse(browseItem.dataset.path ?? null);
       }
     });
     this.modal.addEventListener("mousedown", (event) => {
@@ -66,9 +66,9 @@ export class OpenRepoModal {
       }
     });
     byId("recent-list").addEventListener("click", (event) => {
-      const item = closestEl<HTMLElement>(event.target, ".recent-item");
-      if (item) {
-        void this.openRepo(item.dataset.path ?? "");
+      const recentItem = closestEl<HTMLElement>(event.target, ".recent-item");
+      if (recentItem) {
+        void this.openRepo(recentItem.dataset.path ?? "");
       }
     });
   }

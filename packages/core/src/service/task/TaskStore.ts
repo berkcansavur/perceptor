@@ -80,9 +80,9 @@ export class TaskStore {
   private write(tasks: readonly Task[]): void {
     const file = this.file();
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    const tmp = `${file}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(tasks, null, 2));
-    fs.renameSync(tmp, file);
+    const temporaryFile = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(temporaryFile, JSON.stringify(tasks, null, 2));
+    fs.renameSync(temporaryFile, file);
   }
 
   enqueue(payload: EnqueuePayload): Task {
@@ -111,7 +111,7 @@ export class TaskStore {
   // so the caller works with a real Task; each intent touches only the fields it owns.
   update(payload: UpdatePayload): Task {
     const tasks = this.read();
-    const updatedTask = tasks.find((item) => item.id === payload.id);
+    const updatedTask = tasks.find((candidate) => candidate.id === payload.id);
     if (!updatedTask) {
       throw new TaskNotFoundException(payload.id);
     }
@@ -146,7 +146,7 @@ export class TaskStore {
   // were really spent, and the re-run adds onto them.
   editRequest(id: string, description: string): Task {
     const tasks = this.read();
-    const editRequestTask = tasks.find((item) => item.id === id);
+    const editRequestTask = tasks.find((candidate) => candidate.id === id);
     if (!editRequestTask || editRequestTask.type !== "request") {
       throw new RequestNotFoundException(id);
     }
@@ -167,7 +167,7 @@ export class TaskStore {
   // the token total keeps climbing across the edit. Only user messages are editable.
   editMessage(id: string, index: number, text: string): Task {
     const tasks = this.read();
-    const editMessageTask = tasks.find((item) => item.id === id);
+    const editMessageTask = tasks.find((candidate) => candidate.id === id);
     if (!editMessageTask || editMessageTask.type !== "request") {
       throw new RequestNotFoundException(id);
     }
@@ -225,7 +225,7 @@ export class TaskStore {
   // for lock/attempt bookkeeping).
   mutate(id: string, mutator: (task: Task) => void): void {
     const tasks = this.read();
-    const task = tasks.find((item) => item.id === id);
+    const task = tasks.find((candidate) => candidate.id === id);
     if (!task) {
       return;
     }

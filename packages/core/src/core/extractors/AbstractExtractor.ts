@@ -12,18 +12,18 @@ export abstract class AbstractExtractor implements LanguageExtractor {
     const classes: ParsedClass[] = [];
     const stack: TsNode[] = [rootNode];
     while (stack.length > 0) {
-      const node = stack.pop();
-      if (!node) {
+      const syntaxNode = stack.pop();
+      if (!syntaxNode) {
         continue;
       }
-      const kind = this.classKind(node.type);
+      const kind = this.classKind(syntaxNode.type);
       if (kind) {
-        const parsed = this.readClass(node, kind, relativeFile);
-        if (parsed) {
-          classes.push(parsed);
+        const parsedClass = this.readClass(syntaxNode, kind, relativeFile);
+        if (parsedClass) {
+          classes.push(parsedClass);
         }
       }
-      for (const child of node.namedChildren) {
+      for (const child of syntaxNode.namedChildren) {
         stack.push(child);
       }
     }

@@ -158,21 +158,21 @@ function deletedMember(member: Member, taskId: string): MethodChange {
 function membersIn(lines: SideLine[]): Member[] {
   const texts = lines.map((line) => line.text);
   const members: Member[] = [];
-  let index = 0;
-  while (index < lines.length) {
-    const signature = memberSignature(texts[index] ?? "");
-    const endLine = signature ? matchBodyLines(texts, index) : -1;
+  let lineIndex = 0;
+  while (lineIndex < lines.length) {
+    const signature = memberSignature(texts[lineIndex] ?? "");
+    const endLine = signature ? matchBodyLines(texts, lineIndex) : -1;
     if (!signature || endLine === -1) {
-      index += 1;
+      lineIndex += 1;
       continue;
     }
     members.push({
       name: signature.name,
       signature: signature.signature,
-      code: texts.slice(index, endLine + 1).join("\n"),
-      changed: lines.slice(index, endLine + 1).some((line) => line.changed),
+      code: texts.slice(lineIndex, endLine + 1).join("\n"),
+      changed: lines.slice(lineIndex, endLine + 1).some((line) => line.changed),
     });
-    index = endLine + 1;
+    lineIndex = endLine + 1;
   }
   return members;
 }
@@ -205,52 +205,52 @@ export function sliceMethod(text: string, name: string): string {
 // Index just past the `}` that closes the first `{` at/after `from`, skipping braces in
 // strings and comments. -1 if there's no opening brace or it never balances.
 function matchBody(text: string, from: number): number {
-  let index = text.indexOf("{", from);
-  if (index === -1) {
+  let position = text.indexOf("{", from);
+  if (position === -1) {
     return -1;
   }
   let depth = 0;
-  while (index < text.length) {
-    const char = text.charAt(index);
-    const next = text.charAt(index + 1);
+  while (position < text.length) {
+    const char = text.charAt(position);
+    const next = text.charAt(position + 1);
     if (char === "/" && next === "/") {
-      index = skipUntil(text, index + 2, "\n");
+      position = skipUntil(text, position + 2, "\n");
     } else if (char === "/" && next === "*") {
-      index = skipBlockComment(text, index + 2);
+      position = skipBlockComment(text, position + 2);
     } else if (char === '"' || char === "'" || char === "`") {
-      index = skipQuoted(text, index);
+      position = skipQuoted(text, position);
     } else {
       if (char === "{") {
         depth += 1;
       } else if (char === "}") {
         depth -= 1;
         if (depth === 0) {
-          return index + 1;
+          return position + 1;
         }
       }
-      index += 1;
+      position += 1;
     }
   }
   return -1;
 }
 
 function skipUntil(text: string, from: number, stop: string): number {
-  const index = text.indexOf(stop, from);
-  return index === -1 ? text.length : index;
+  const position = text.indexOf(stop, from);
+  return position === -1 ? text.length : position;
 }
 
 function skipBlockComment(text: string, from: number): number {
-  const index = text.indexOf("*/", from);
-  return index === -1 ? text.length : index + 2;
+  const position = text.indexOf("*/", from);
+  return position === -1 ? text.length : position + 2;
 }
 
 function skipQuoted(text: string, from: number): number {
   const quote = text.charAt(from);
-  let index = from + 1;
-  while (index < text.length && text.charAt(index) !== quote) {
-    index += text.charAt(index) === "\\" ? 2 : 1;
+  let position = from + 1;
+  while (position < text.length && text.charAt(position) !== quote) {
+    position += text.charAt(position) === "\\" ? 2 : 1;
   }
-  return index + 1;
+  return position + 1;
 }
 
 function escapeRegExp(value: string): string {

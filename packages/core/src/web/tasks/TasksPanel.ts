@@ -58,11 +58,11 @@ export class TasksPanel {
     } catch {
       return;
     }
-    const byTask = new Map(activities.map((item) => [item.taskId, item]));
-    for (const node of this.list.querySelectorAll<HTMLElement>(".task-activity")) {
-      const activity = node.dataset.activityFor ? byTask.get(node.dataset.activityFor) : undefined;
-      node.textContent = activity ? `⚙ ${activity.text}` : "";
-      node.classList.toggle("hidden", !activity);
+    const byTask = new Map(activities.map((activity) => [activity.taskId, activity]));
+    for (const activityElement of this.list.querySelectorAll<HTMLElement>(".task-activity")) {
+      const activity = activityElement.dataset.activityFor ? byTask.get(activityElement.dataset.activityFor) : undefined;
+      activityElement.textContent = activity ? `⚙ ${activity.text}` : "";
+      activityElement.classList.toggle("hidden", !activity);
     }
   }
 

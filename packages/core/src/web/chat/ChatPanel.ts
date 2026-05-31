@@ -69,9 +69,9 @@ export class ChatPanel {
       this.startNewChat();
       return;
     }
-    const item = closestEl<HTMLElement>(event.target, "[data-conv]");
-    if (item) {
-      this.selectedId = item.dataset.conv ?? null;
+    const conversationItem = closestEl<HTMLElement>(event.target, "[data-conv]");
+    if (conversationItem) {
+      this.selectedId = conversationItem.dataset.conv ?? null;
       this.newChatMode = false;
       this.editingId = null;
       this.editingMessage = null;
@@ -167,11 +167,11 @@ export class ChatPanel {
     } catch {
       return;
     }
-    const byTask = new Map(activities.map((item) => [item.taskId, item]));
-    for (const node of this.thread.querySelectorAll<HTMLElement>(".chat-activity")) {
-      const activity = node.dataset.activityFor ? byTask.get(node.dataset.activityFor) : undefined;
-      node.textContent = activity ? `⚙ ${activity.text}` : "";
-      node.classList.toggle("hidden", !activity);
+    const byTask = new Map(activities.map((activity) => [activity.taskId, activity]));
+    for (const activityElement of this.thread.querySelectorAll<HTMLElement>(".chat-activity")) {
+      const activity = activityElement.dataset.activityFor ? byTask.get(activityElement.dataset.activityFor) : undefined;
+      activityElement.textContent = activity ? `⚙ ${activity.text}` : "";
+      activityElement.classList.toggle("hidden", !activity);
     }
   }
 

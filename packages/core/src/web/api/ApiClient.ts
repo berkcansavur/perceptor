@@ -128,12 +128,12 @@ export class ApiClient implements Api {
 
   constructor() {
     window.addEventListener("message", (event: MessageEvent) => {
-      const data = event.data as { id?: number; result?: unknown };
-      if (typeof data?.id === "number") {
-        const settle = this.pending.get(data.id);
+      const response = event.data as { id?: number; result?: unknown };
+      if (typeof response?.id === "number") {
+        const settle = this.pending.get(response.id);
         if (settle) {
-          this.pending.delete(data.id);
-          settle(data.result);
+          this.pending.delete(response.id);
+          settle(response.result);
         }
       }
     });

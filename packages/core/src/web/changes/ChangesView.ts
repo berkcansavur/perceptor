@@ -284,10 +284,10 @@ export class ChangesView {
       return `<span class="behavior-name">${escapeHtml(signature)}</span>`;
     }
     const [, name = "", params = "", returnType = ""] = match;
-    const ret = returnType.trim();
+    const trimmedReturnType = returnType.trim();
     return `<span class="behavior-name">${escapeHtml(name)}</span><span class="behavior-params">(${escapeHtml(
       params
-    )})</span>${ret ? ` <span class="behavior-return">${escapeHtml(ret)}</span>` : ""}`;
+    )})</span>${trimmedReturnType ? ` <span class="behavior-return">${escapeHtml(trimmedReturnType)}</span>` : ""}`;
   }
 
   // Fallback for a diff with no recognisable file/method structure: still avoid the

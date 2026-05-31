@@ -437,13 +437,13 @@ export type TVars = Record<string, string | number>;
 
 export function t(key: string, vars?: TVars): string {
   const table = I18N[currentLang] ?? I18N.en;
-  let value = table[key] ?? I18N.en[key] ?? key;
+  let translation = table[key] ?? I18N.en[key] ?? key;
   if (vars) {
     for (const name of Object.keys(vars)) {
-      value = value.replace(new RegExp(`\\{${name}\\}`, "g"), String(vars[name]));
+      translation = translation.replace(new RegExp(`\\{${name}\\}`, "g"), String(vars[name]));
     }
   }
-  return value;
+  return translation;
 }
 
 export function getCurrentLang(): LangId {

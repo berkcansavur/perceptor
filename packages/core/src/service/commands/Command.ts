@@ -19,13 +19,13 @@ export abstract class Command<Request, Result> implements CommandHandler<Result>
   }
 
   protected text(payload: Record<string, unknown>, key: string, fallback = ""): string {
-    const value = payload[key];
-    return value === undefined || value === null ? fallback : String(value);
+    const rawValue = payload[key];
+    return rawValue === undefined || rawValue === null ? fallback : String(rawValue);
   }
 
   protected count(payload: Record<string, unknown>, key: string, fallback: number): number {
-    const value = payload[key];
-    return value === undefined || value === null ? fallback : Number(value);
+    const rawValue = payload[key];
+    return rawValue === undefined || rawValue === null ? fallback : Number(rawValue);
   }
 
   protected flag(payload: Record<string, unknown>, key: string): boolean {
@@ -33,8 +33,8 @@ export abstract class Command<Request, Result> implements CommandHandler<Result>
   }
 
   protected optionalText(payload: Record<string, unknown>, key: string): string | null {
-    const value = payload[key];
-    return typeof value === "string" ? value : null;
+    const rawValue = payload[key];
+    return typeof rawValue === "string" ? rawValue : null;
   }
 }
 

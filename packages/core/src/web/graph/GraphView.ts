@@ -140,13 +140,13 @@ export class GraphView {
       }
     }
     for (const line of qsa<SVGLineElement>(this.edgesSvg, "line")) {
-      const a = position.get(line.dataset.a ?? "");
-      const b = position.get(line.dataset.b ?? "");
-      if (a && b) {
-        line.setAttribute("x1", String(a.x));
-        line.setAttribute("y1", String(a.y));
-        line.setAttribute("x2", String(b.x));
-        line.setAttribute("y2", String(b.y));
+      const sourcePoint = position.get(line.dataset.a ?? "");
+      const targetPoint = position.get(line.dataset.b ?? "");
+      if (sourcePoint && targetPoint) {
+        line.setAttribute("x1", String(sourcePoint.x));
+        line.setAttribute("y1", String(sourcePoint.y));
+        line.setAttribute("x2", String(targetPoint.x));
+        line.setAttribute("y2", String(targetPoint.y));
       }
     }
   }
@@ -289,7 +289,7 @@ export class GraphView {
     const folder = this.state.folderByDir.get(dir);
     const classes = this.model.classesIn(dir);
     const rows = classes.length
-      ? classes.map((item) => this.cardRow(item)).join("")
+      ? classes.map((classNode) => this.cardRow(classNode)).join("")
       : `<div class="graph-card-empty muted">${escapeHtml(folder?.dir ?? dir)} — no files here</div>`;
     this.card.innerHTML = `<div class="graph-card-head">${escapeHtml(folder?.label ?? dir)} <span class="muted">${classes.length}</span></div><div class="graph-card-list">${rows}</div>`;
     const nodeRect = node.getBoundingClientRect();

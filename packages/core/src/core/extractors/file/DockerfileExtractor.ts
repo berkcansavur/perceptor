@@ -27,11 +27,11 @@ export class DockerfileExtractor implements FileNodeExtractor {
   private readStages(content: string): Behavior[] {
     const stages: Behavior[] = [];
     const lines = content.split("\n");
-    for (let index = 0; index < lines.length; index++) {
-      const match = FROM_PATTERN.exec(lines[index] ?? "");
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const match = FROM_PATTERN.exec(lines[lineIndex] ?? "");
       if (match) {
         const baseImage = match[1] ?? "";
-        stages.push(this.toBehavior(match[2] ?? baseImage, baseImage, index + 1));
+        stages.push(this.toBehavior(match[2] ?? baseImage, baseImage, lineIndex + 1));
       }
     }
     return stages;

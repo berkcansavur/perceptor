@@ -78,15 +78,15 @@ export function activityFromStreamLine(line: string): string | null {
 
 function labelForContent(content: unknown[]): string | null {
   for (const raw of content) {
-    const item = asRecord(raw);
-    if (!item) {
+    const contentItem = asRecord(raw);
+    if (!contentItem) {
       continue;
     }
-    if (item["type"] === "tool_use") {
-      return labelForTool(asString(item["name"]), asRecord(item["input"]) ?? {});
+    if (contentItem["type"] === "tool_use") {
+      return labelForTool(asString(contentItem["name"]), asRecord(contentItem["input"]) ?? {});
     }
-    if (item["type"] === "text" && asString(item["text"]).trim()) {
-      return truncate(asString(item["text"]).trim());
+    if (contentItem["type"] === "text" && asString(contentItem["text"]).trim()) {
+      return truncate(asString(contentItem["text"]).trim());
     }
   }
   return null;

@@ -43,48 +43,48 @@ export class ComplexityAnalyzer {
   // Blank out comments and string/template literals so their contents never count as
   // keywords, braces or calls.
   private stripNonCode(code: string): string {
-    let out = "";
-    let index = 0;
-    while (index < code.length) {
-      const char = code.charAt(index);
-      const next = code.charAt(index + 1);
+    let stripped = "";
+    let position = 0;
+    while (position < code.length) {
+      const char = code.charAt(position);
+      const next = code.charAt(position + 1);
       if (char === "/" && next === "/") {
-        index += 2;
-        while (index < code.length && code.charAt(index) !== "\n") {
-          index += 1;
+        position += 2;
+        while (position < code.length && code.charAt(position) !== "\n") {
+          position += 1;
         }
         continue;
       }
       if (char === "/" && next === "*") {
-        index += 2;
-        while (index < code.length && !(code.charAt(index) === "*" && code.charAt(index + 1) === "/")) {
-          index += 1;
+        position += 2;
+        while (position < code.length && !(code.charAt(position) === "*" && code.charAt(position + 1) === "/")) {
+          position += 1;
         }
-        index += 2;
+        position += 2;
         continue;
       }
       if (char === '"' || char === "'" || char === "`") {
-        index = this.skipString(code, index);
-        out += '""';
+        position = this.skipString(code, position);
+        stripped += '""';
         continue;
       }
-      out += char;
-      index += 1;
+      stripped += char;
+      position += 1;
     }
-    return out;
+    return stripped;
   }
 
   private skipString(code: string, start: number): number {
     const quote = code.charAt(start);
-    let index = start + 1;
-    while (index < code.length && code.charAt(index) !== quote) {
-      index += this.charAt(code, index) === "\\" ? 2 : 1;
+    let position = start + 1;
+    while (position < code.length && code.charAt(position) !== quote) {
+      position += this.charAt(code, position) === "\\" ? 2 : 1;
     }
-    return index + 1;
+    return position + 1;
   }
 
-  private charAt(code: string, index: number): string {
-    return code.charAt(index);
+  private charAt(code: string, position: number): string {
+    return code.charAt(position);
   }
 
   // Max nesting of loop scopes. A `{` block is a loop body when it follows a for/while/do
@@ -93,60 +93,60 @@ export class ComplexityAnalyzer {
   private loopDepth(clean: string): number {
     const stack: boolean[] = [];
     let depth = 0;
-    let max = 0;
+    let maxDepth = 0;
     let pendingBlockLoop = false;
     let pendingCallLoop = false;
     let afterDot = false;
-    let index = 0;
-    while (index < clean.length) {
-      const char = clean.charAt(index);
+    let position = 0;
+    while (position < clean.length) {
+      const char = clean.charAt(position);
       if (this.isIdentifierStart(char)) {
-        const end = this.identifierEnd(clean, index);
-        const word = clean.slice(index, end);
+        const end = this.identifierEnd(clean, position);
+        const word = clean.slice(position, end);
         if (afterDot && ITERATORS.has(word)) {
           pendingCallLoop = true;
         } else if (!afterDot && LOOP_KEYWORDS.has(word)) {
           pendingBlockLoop = true;
         }
         afterDot = false;
-        index = end;
+        position = end;
         continue;
       }
       if (char === ".") {
         afterDot = true;
-        index += 1;
+        position += 1;
         continue;
       }
       if (char === "(") {
         const isLoop = pendingCallLoop;
         pendingCallLoop = false;
         depth = this.openScope(stack, isLoop, depth);
-        max = Math.max(max, depth);
+        maxDepth = Math.max(maxDepth, depth);
         afterDot = false;
-        index += 1;
+        position += 1;
         continue;
       }
       if (char === "{") {
         const isLoop = pendingBlockLoop;
         pendingBlockLoop = false;
         depth = this.openScope(stack, isLoop, depth);
-        max = Math.max(max, depth);
+        maxDepth = Math.max(maxDepth, depth);
         afterDot = false;
-        index += 1;
+        position += 1;
         continue;
       }
       if (char === ")" || char === "}") {
         depth = this.closeScope(stack, depth);
         afterDot = false;
-        index += 1;
+        position += 1;
         continue;
       }
       if (!this.isWhitespace(char)) {
         afterDot = false;
       }
-      index += 1;
+      position += 1;
     }
-    return max;
+    return maxDepth;
   }
 
   private openScope(stack: boolean[], isLoop: boolean, depth: number): number {
@@ -216,11 +216,11 @@ export class ComplexityAnalyzer {
   }
 
   private identifierEnd(text: string, start: number): number {
-    let index = start + 1;
-    while (index < text.length && /[A-Za-z0-9_$]/.test(text.charAt(index))) {
-      index += 1;
+    let position = start + 1;
+    while (position < text.length && /[A-Za-z0-9_$]/.test(text.charAt(position))) {
+      position += 1;
     }
-    return index;
+    return position;
   }
 
   private isWhitespace(char: string): boolean {

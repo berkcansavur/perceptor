@@ -192,23 +192,23 @@ export class GraphModel {
 
   private applyLinks(position: Map<string, Point>): void {
     for (const edge of this.state.folderEdges) {
-      const a = position.get(edge.a);
-      const b = position.get(edge.b);
-      const va = this.velocities.get(edge.a);
-      const vb = this.velocities.get(edge.b);
-      if (!a || !b || !va || !vb) {
+      const pointA = position.get(edge.a);
+      const pointB = position.get(edge.b);
+      const velocityA = this.velocities.get(edge.a);
+      const velocityB = this.velocities.get(edge.b);
+      if (!pointA || !pointB || !velocityA || !velocityB) {
         continue;
       }
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const distance = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const deltaX = pointB.x - pointA.x;
+      const deltaY = pointB.y - pointA.y;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) || 0.01;
       const force = (distance - LINK_DISTANCE) * LINK_STRENGTH * this.alpha;
-      const ux = (dx / distance) * force;
-      const uy = (dy / distance) * force;
-      va.vx += ux;
-      va.vy += uy;
-      vb.vx -= ux;
-      vb.vy -= uy;
+      const forceX = (deltaX / distance) * force;
+      const forceY = (deltaY / distance) * force;
+      velocityA.vx += forceX;
+      velocityA.vy += forceY;
+      velocityB.vx -= forceX;
+      velocityB.vy -= forceY;
     }
   }
 

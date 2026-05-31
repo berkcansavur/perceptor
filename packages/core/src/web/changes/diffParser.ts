@@ -38,16 +38,16 @@ export function parseUnifiedDiff(diff: string): DiffFile[] {
   let file: DiffFile | null = null;
   let hunk: DiffHunk | null = null;
 
-  for (let index = 0; index < rows.length; index += 1) {
-    const line = rows[index] ?? "";
-    const nextLine = rows[index + 1] ?? "";
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const line = rows[rowIndex] ?? "";
+    const nextLine = rows[rowIndex + 1] ?? "";
     if (line.startsWith(GIT_HEADER)) {
       file = null;
       hunk = null;
     } else if (line.startsWith(OLD_FILE) && nextLine.startsWith(NEW_FILE)) {
       file = startFileFromHeader(files, line, nextLine);
       hunk = null;
-      index += 1;
+      rowIndex += 1;
     } else if (line.startsWith(HUNK)) {
       file = file ?? startFile(files, "", "edit");
       hunk = { header: line, lines: [] };
