@@ -15,12 +15,16 @@
     "test": "npm run test -w perceptor-core && npm run test -w perceptor",
     "start": "npm run start -w perceptor-core",
     "package": "bash scripts/pack-extension.sh",
-    "install:local": "bash scripts/install-local.sh"
+    "install:local": "bash scripts/install-local.sh",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "husky": "^9.1.0",
     "@types/node": "^20.19.0",
     "typescript": "^5.4.0"
   }
