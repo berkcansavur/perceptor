@@ -156,6 +156,8 @@
         <label class="modal-sub" id="create-filetype-label" data-i18n="create.typeLabel">File template</label>
         <select id="create-filetype"></select>
         <input id="create-typename" type="text" data-i18n-placeholder="create.typeName" />
+        <label class="modal-sub" id="create-package-label" data-i18n="create.packageLabel" style="display:none">Go package</label>
+        <input id="create-package" type="text" data-i18n-placeholder="create.package" style="display:none" />
         <div id="create-error" class="modal-error hidden"></div>
         <div class="modal-actions">
           <button id="create-cancel" data-i18n="modal.cancel">Cancel</button>
@@ -199,6 +201,7 @@
             <option value="typescript">TypeScript</option>
             <option value="java">Java</option>
             <option value="csharp">C#</option>
+            <option value="go">Go</option>
           </select>
           <label class="modal-sub" data-i18n="prefs.framework">Preferred framework</label>
           <select id="prefs-framework"></select>

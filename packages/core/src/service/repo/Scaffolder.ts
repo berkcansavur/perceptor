@@ -280,7 +280,7 @@ export class Scaffolder {
     const context: ScaffoldContext = {
       typeName: (request.typeName || baseName(request.fileName)).trim(),
       namespace: namespaceForDir(request.dir),
-      goPackage: goPackageForDir(request.dir),
+      goPackage: request.goPackage || goPackageForDir(request.dir),
       absoluteDir: request.absoluteDir,
       fileName: request.fileName,
     };

@@ -126,6 +126,7 @@ export class WorkspaceService {
         fileName: name,
         template: payload.template,
         typeName: payload.typeName,
+        goPackage: payload.goPackage,
         dir: directory,
         absoluteDir,
       });

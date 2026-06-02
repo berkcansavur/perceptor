@@ -194,7 +194,7 @@ export type UpdatePayload = SetStatusUpdate | ReplyUpdate | DismissUpdate;
 
 // Scaffolding request, discriminated by `kind`: a file carries its template + type name,
 // a folder carries neither — so the shape tells you which fields exist, no nullable bag.
-export type CreateFile = { kind: "file"; dir: string; name: string; template: string; typeName: string };
+export type CreateFile = { kind: "file"; dir: string; name: string; template: string; typeName: string; goPackage: string };
 export type CreateFolder = { kind: "folder"; dir: string; name: string };
 export type CreatePayload = CreateFile | CreateFolder;
 
@@ -290,6 +290,7 @@ export type ScaffoldRequest = {
   typeName: string;
   dir: string;
   absoluteDir: string;
+  goPackage: string;
 }
 
 export type AutoStatus = {
@@ -424,7 +425,7 @@ export type FlowReport = {
   steps: FlowStep[];
 }
 
-export type PreferredLanguage = "typescript" | "java" | "csharp";
+export type PreferredLanguage = "typescript" | "java" | "csharp" | "go";
 
 export type NamingPreferences = {
   classCase: string;

@@ -147,6 +147,10 @@ export class FolderTree {
     return count;
   }
 
+  private hasGoTypes(folder: TreeFolder): boolean {
+    return folder.classes.some((c) => c.language === "go");
+  }
+
   private behaviorSignature(behavior: Behavior): string {
     const params = behavior.params
       .map((param) => `${escapeHtml(param.name)}: ${escapeHtml(param.type)}`)
@@ -167,10 +171,11 @@ export class FolderTree {
     return [
       ...folderEntries.map((child) => {
         const color = folderColor(child.name);
+        const goPkg = this.hasGoTypes(child);
         return `<div class="tree-folder">
           <div class="tree-row tree-folder-row" data-path="${escapeHtml(child.path)}" style="border-left:3px solid ${color.accent}">
             <span class="tree-caret">▾</span>
-            <span class="tree-folder-name">${escapeHtml(child.name)}</span>
+            <span class="tree-folder-name">${escapeHtml(child.name)}</span>${goPkg ? '<span class="go-pkg-badge">pkg</span>' : ""}
             <span class="tree-count">${this.classCountIn(child)}</span>
             <button class="row-btn new-file-btn">${t("create.fileBtn")}</button>
             <button class="row-btn new-folder-btn">${t("create.folderBtn")}</button>

@@ -16,11 +16,11 @@
      separate from the shared semantic vars above so edges/visibility/status
      badges are unaffected. */
   --kind-class: #ee9d28;
-  --kind-interface: #75beff;
+  --kind-interface: #43d9ad;
   --kind-enum: #d7ba7d;
   --kind-struct: #569cd6;
   --kind-record: #c586c0;
-  --kind-type: #4ec9b0;
+  --kind-type: #75beff;
   --kind-const: #4fc1ff;
   --kind-function: #dcdcaa;
   --kind-annotation: #dcdcaa;
@@ -317,6 +317,17 @@ button:hover {
 .kind-config { background: var(--kind-config); }
 .kind-file { background: var(--kind-file); }
 
+.go-pkg-badge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #3d8b6e;
+  color: #d7dbe4;
+  margin-left: 4px;
+}
+
 .behavior {
   padding: 4px 11px;
   display: flex;
@@ -521,6 +532,7 @@ button:hover {
 #create-name,
 #create-dir,
 #create-typename,
+#create-package,
 #edit-sig {
   width: 100%;
   margin-top: 8px;
@@ -556,6 +568,7 @@ button:hover {
 #create-name:focus,
 #create-dir:focus,
 #create-typename:focus,
+#create-package:focus,
 #create-filetype:focus {
   border-color: var(--accent);
 }

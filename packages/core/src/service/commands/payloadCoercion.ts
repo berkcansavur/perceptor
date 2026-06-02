@@ -6,7 +6,7 @@ import { UnsupportedActionException } from "../exception";
 // Boundary coercion: the webview RPC hands us untyped records, so here — and only
 // here — we turn them into complete, typed domain payloads.
 
-const PREFERRED_LANGUAGES: readonly PreferredLanguage[] = ["typescript", "java", "csharp"];
+const PREFERRED_LANGUAGES: readonly PreferredLanguage[] = ["typescript", "java", "csharp", "go"];
 
 function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null;

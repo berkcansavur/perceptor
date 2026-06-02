@@ -1,6 +1,6 @@
 import type { CodingPreferences, PreferredLanguage } from "../types";
 
-const PREFERRED_LANGUAGES: readonly PreferredLanguage[] = ["typescript", "java", "csharp"];
+const PREFERRED_LANGUAGES: readonly PreferredLanguage[] = ["typescript", "java", "csharp", "go"];
 const FALLBACK_MAX_METHOD_LINES = 30;
 
 // The frameworks offered per primary language; the form's framework dropdown is built
@@ -9,6 +9,7 @@ export const FRAMEWORKS: Record<PreferredLanguage, readonly string[]> = {
   typescript: ["NestJS", "Express", "Next.js", "Angular", "React", "Vue"],
   java: ["Spring Boot", "Quarkus", "Micronaut", "Jakarta EE"],
   csharp: ["ASP.NET Core", "Blazor", ".NET MAUI", "Entity Framework"],
+  go: ["Gin", "Echo", "Fiber", "Chi", "Gorilla Mux"],
 };
 
 // Keeps a stored framework only if it belongs to the language's list; otherwise clears it

@@ -124,3 +124,28 @@ describe("analyze — C#", () => {
     expect(edges).toContain("OrderPlaced->Order");
   });
 });
+
+describe("analyze — Go", () => {
+  it("extracts structs, interfaces and attaches receiver methods", async () => {
+    const { kinds } = await summarize("go");
+    expect(kinds).toEqual([
+      "interface:Repository",
+      "struct:Order",
+      "struct:Service",
+    ]);
+  });
+
+  it("attaches receiver methods as behaviors of their struct", async () => {
+    const { graph } = await summarize("go");
+    const order = graph.nodes.find((node) => node.name === "Order");
+    expect(order?.behaviors.map((behavior) => behavior.name)).toEqual(["IsEmpty"]);
+    const service = graph.nodes.find((node) => node.name === "Service");
+    expect(service?.behaviors.map((behavior) => behavior.name)).toEqual(["Process"]);
+  });
+
+  it("wires field dependencies including channel types", async () => {
+    const { edges } = await summarize("go");
+    expect(edges).toContain("Service->Repository");
+    expect(edges).toContain("Service->Order");
+  });
+});

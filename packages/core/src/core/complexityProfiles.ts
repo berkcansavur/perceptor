@@ -92,6 +92,14 @@ const CSHARP_PROFILE: ComplexityProfile = {
   branchKeywords: new Set(["if", "for", "foreach", "while", "case", "catch"]),
 };
 
+// Go: `for` is the only loop construct (no while/foreach). No functional iterator
+// methods — iteration is always `for range`. `select` branches over channel ops.
+const GO_PROFILE: ComplexityProfile = {
+  headerLoops: new Set(["for"]),
+  iterators: new Set([]),
+  branchKeywords: new Set(["if", "for", "switch", "select", "case"]),
+};
+
 const PROFILE_BY_EXTENSION: Record<string, ComplexityProfile> = {
   ".cs": CSHARP_PROFILE,
   ".java": JAVA_PROFILE,
@@ -103,6 +111,7 @@ const PROFILE_BY_EXTENSION: Record<string, ComplexityProfile> = {
   ".jsx": TS_PROFILE,
   ".mjs": TS_PROFILE,
   ".cjs": TS_PROFILE,
+  ".go": GO_PROFILE,
 };
 
 export const DEFAULT_COMPLEXITY_PROFILE = TS_PROFILE;
