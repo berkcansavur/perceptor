@@ -1,4 +1,5 @@
 import { qsa } from "../dom";
+import { t } from "../i18n";
 
 // Per-step dwell time for each speed. Default is "normal" — a comfortable follow-along pace
 // that's neither sluggish nor a skim.
@@ -29,6 +30,7 @@ export class FlowPlayer {
   private playing = false;
   private speed: Speed = "normal";
   private root: HTMLElement | null = null;
+  private runButton: HTMLElement | null = null;
 
   // Bind to a newly-rendered `.fx-strip`, discarding any previous playback state. Wires the
   // controls once (call `resync` afterwards to re-read steps without rebinding).
@@ -54,6 +56,7 @@ export class FlowPlayer {
     this.index = 0;
     this.stopAt = this.computeStop();
     this.root?.classList.remove("fx-armed");
+    this.updateRunLabel("run");
     this.steps.forEach((step) => step.classList.remove("fx-active"));
   }
 
@@ -90,7 +93,8 @@ export class FlowPlayer {
   }
 
   private bind(root: HTMLElement): void {
-    root.querySelector("[data-fx-run]")?.addEventListener("click", () => this.runClicked());
+    this.runButton = root.querySelector<HTMLElement>("[data-fx-run]");
+    this.runButton?.addEventListener("click", () => this.runClicked());
     root.querySelector("[data-fx-clear]")?.addEventListener("click", () => this.clearClicked());
     root.querySelector("[data-fx-replay]")?.addEventListener("click", () => this.replay());
     const speed = root.querySelector<HTMLSelectElement>("[data-fx-speed]");
@@ -105,6 +109,14 @@ export class FlowPlayer {
   // Run: re-simulate the taken path when a payload is wired (the simulator's hook ends by
   // calling start, so playback follows), else just play the static steps from the top.
   private runClicked(): void {
+    if (this.playing) {
+      this.pause();
+      return;
+    }
+    if (this.index > 0 && this.index < this.steps.length) {
+      this.resume();
+      return;
+    }
     if (this.onRun) {
       this.onRun();
     } else {
@@ -139,6 +151,7 @@ export class FlowPlayer {
       this.hideAll();
     }
     this.playing = true;
+    this.updateRunLabel("pause");
     this.revealNext(); // immediate feedback, then keep going on the interval
     if (this.index >= this.steps.length || this.justRevealedTerminal()) {
       this.finish();
@@ -185,6 +198,7 @@ export class FlowPlayer {
   private finish(): void {
     this.clearTimer();
     this.playing = false;
+    this.updateRunLabel("run");
     this.steps.forEach((step) => step.classList.remove("fx-active"));
   }
 
@@ -201,5 +215,28 @@ export class FlowPlayer {
 
   private normaliseSpeed(value: string): Speed {
     return value === "slow" || value === "normal" || value === "fast" ? value : "normal";
+  }
+
+  private pause(): void {
+    this.clearTimer();
+    this.playing = false;
+    this.updateRunLabel("continue");
+  }
+
+  private resume(): void {
+    this.playing = true;
+    this.updateRunLabel("pause");
+    this.revealNext();
+    if (this.index >= this.steps.length || this.justRevealedTerminal()) {
+      this.finish();
+      return;
+    }
+    this.schedule();
+  }
+
+  private updateRunLabel(state: "run" | "pause" | "continue"): void {
+    if (!this.runButton) return;
+    const key = state === "pause" ? "fx.pause" : state === "continue" ? "fx.continue" : "fx.run";
+    this.runButton.textContent = t(key);
   }
 }
