@@ -4,12 +4,14 @@ Perceptor X-rays your repository: an interactive, Obsidian-style **dependency &
 behavior map**, with static **complexity** and **data-access risk** read straight off
 each method — rendered right inside VS Code.
 
+![Graph mode](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/screenshots/graph.png)
+
 - **Graph mode** — folders as connection-sized circle nodes, dependencies as
   edges, in a force layout.
 - **Folder mode** — a collapsible tree (folder → type → behaviors), with a method
   detail panel.
 - **Method insight** — for any method: a static **Big-O / complexity** read, **data-access
-  (SQL/ORM) risk** signals (N+1, `SELECT *`, unbounded finds…), and a **Run flow**
+  (SQL/ORM) risk** signals (N+1, `SELECT *`, unbounded finds…), and a **Simulate flow**
   storyboard that animates, step by step, what the method receives, every call it makes,
   and what it returns.
 - **Explain** — ask your own local Claude for a complete plain-English explanation of a
@@ -17,6 +19,24 @@ each method — rendered right inside VS Code.
 - **Change tasks** — add / move / edit a behavior or create files & folders from
   the map; the work is carried out by *your own* local Claude. No server, no
   hosted backend, your tokens.
+
+## Screenshots
+
+**Folder mode** — collapsible tree with a method detail panel:
+
+![Folder mode](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/screenshots/folder.png)
+
+**Method insight** — complexity, data-access risk, and the Simulate-flow storyboard:
+
+![Method insight](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/screenshots/method-insight.png)
+
+**Explain** — ask your own local Claude about a method, inline:
+
+![Chat](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/screenshots/chat.png)
+
+**Change tasks** — review and apply changes carried out by your local Claude:
+
+![Changes](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/screenshots/changes.png)
 
 ## Quick start (3 steps)
 
@@ -31,9 +51,16 @@ features need the free `claude` CLI installed; the map works fine without it.)*
 
 ## Installation
 
-No Marketplace account needed — it ships as a single `.vsix` file.
+**From the VS Code Marketplace (easiest):**
 
-**From the packaged file (easiest):**
+Open the **Extensions** panel (`Cmd/Ctrl+Shift+X`), search for **Perceptor**, and
+click **Install** — or from the command line:
+
+```bash
+code --install-extension berkcansavur.perceptor
+```
+
+**From a packaged `.vsix` file:**
 
 ```bash
 code --install-extension perceptor-*.vsix
@@ -42,7 +69,7 @@ code --install-extension perceptor-*.vsix
 …or in VS Code: **Extensions** panel → `…` menu → **Install from VSIX…** → pick the file.
 
 Then open any folder and run **Perceptor: Open** (see Usage). To update, install
-a newer `.vsix` the same way.
+a newer build the same way.
 
 **Build the `.vsix` yourself:**
 
@@ -61,7 +88,7 @@ npm run package        # → packages/extension/perceptor-<version>.vsix
 3. Switch between **Graph** and **Folder** modes, pan / zoom / search, click a
    type to open it in the editor.
 4. In Folder mode, click a behavior to open its detail panel — complexity, data-access
-   risk, the Run-flow storyboard (press **Play**), and **Explain**.
+   risk, the Simulate-flow storyboard (press **Run**), and **Explain**.
 
 The map refreshes automatically as files change.
 
