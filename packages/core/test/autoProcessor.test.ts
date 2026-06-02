@@ -251,7 +251,7 @@ describe("AutoProcessor", () => {
     expect(store.read()[0]?.status).toBe("error");
     expect(runner.runs).toHaveLength(1);
 
-    store.update(reply(task.id, "lütfen tekrar dene"));
+    store.update(reply(task.id, "please try again"));
     processor.notify();
     vi.advanceTimersByTime(DEBOUNCE_MS);
 

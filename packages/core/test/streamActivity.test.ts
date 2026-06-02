@@ -5,9 +5,9 @@ describe("activityFromStreamLine", () => {
   it("returns the assistant's narration text", () => {
     const line = JSON.stringify({
       type: "assistant",
-      message: { content: [{ type: "text", text: "Repo'yu inceliyorum, hexagonal yapıyı planlıyorum." }] },
+      message: { content: [{ type: "text", text: "Inspecting the repo, planning the hexagonal layout." }] },
     });
-    expect(activityFromStreamLine(line)).toBe("Repo'yu inceliyorum, hexagonal yapıyı planlıyorum.");
+    expect(activityFromStreamLine(line)).toBe("Inspecting the repo, planning the hexagonal layout.");
   });
 
   it("labels a tool use with its target file", () => {
