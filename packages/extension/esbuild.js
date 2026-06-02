@@ -43,6 +43,7 @@ function copyAssets() {
     "tree-sitter-c_sharp.wasm",
     "tree-sitter-typescript.wasm",
     "tree-sitter-tsx.wasm",
+    "tree-sitter-go.wasm",
   ];
   for (const grammar of grammars) {
     fs.copyFileSync(path.join(grammarsDir, grammar), path.join(wasmOut, grammar));

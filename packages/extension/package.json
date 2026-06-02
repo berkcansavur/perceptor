@@ -2,7 +2,7 @@
   "name": "perceptor",
   "displayName": "Perceptor",
   "description": "Perceptor X-rays your repository: an interactive dependency & behavior map plus per-method analysis — Big-O complexity and N+1 / SQL-ORM query risk — with optional Claude-powered edits that use your own local Claude CLI and tokens.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "berkcansavur",
   "author": "Berkcan Şavur",
   "license": "MIT",

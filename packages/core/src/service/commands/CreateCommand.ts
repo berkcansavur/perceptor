@@ -21,6 +21,7 @@ export class CreateCommand extends Command<ApiRequest["create"], Awaited<ReturnT
       name,
       template: this.text(payload, "template", "empty"),
       typeName: this.text(payload, "typeName"),
+      goPackage: this.text(payload, "goPackage"),
     };
   }
 

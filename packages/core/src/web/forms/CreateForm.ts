@@ -20,6 +20,8 @@ export class CreateForm {
   private readonly templateLabel = byId("create-filetype-label");
   private readonly templateSelect = byId<HTMLSelectElement>("create-filetype");
   private readonly typeNameInput = byId<HTMLInputElement>("create-typename");
+  private readonly packageLabel = byId("create-package-label");
+  private readonly packageInput = byId<HTMLInputElement>("create-package");
   private readonly error = byId("create-error");
   private readonly target = { kind: "file" };
   private lastFamily: string | null = null;
@@ -101,6 +103,18 @@ export class CreateForm {
     if (needsTypeName && !this.typeNameInput.value.trim()) {
       this.typeNameInput.value = this.fileBaseName();
     }
+    this.syncPackageVisibility();
+  }
+
+  private syncPackageVisibility(): void {
+    const isGo = this.fileFamilyOf(this.nameInput.value) === "go";
+    this.packageLabel.style.display = isGo ? "" : "none";
+    this.packageInput.style.display = isGo ? "" : "none";
+    if (isGo && !this.packageInput.value.trim()) {
+      const dir = this.dirInput.value.trim();
+      const segments = dir.split("/").filter(Boolean);
+      this.packageInput.value = segments.length > 0 ? segments[segments.length - 1] as string : "main";
+    }
   }
 
   private populateTemplates(): void {
@@ -124,6 +138,8 @@ export class CreateForm {
     this.templateLabel.style.display = isFile ? "" : "none";
     this.templateSelect.style.display = isFile ? "" : "none";
     this.typeNameInput.style.display = isFile ? "" : "none";
+    this.packageLabel.style.display = "none";
+    this.packageInput.style.display = "none";
   }
 
   private async confirm(): Promise<void> {
@@ -142,6 +158,7 @@ export class CreateForm {
           name,
           template: this.templateSelect.value,
           typeName: hasNamedTemplate ? this.typeNameInput.value.trim() || this.fileBaseName() : "",
+          goPackage: this.packageInput.value.trim(),
         }
       : { kind: "folder", dir, name };
     try {

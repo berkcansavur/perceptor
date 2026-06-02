@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-03
+
+### Added
+- **Go language support**: struct and interface extraction with receiver method
+  attachment, channel/pointer/slice/map type unwrapping, and Go visibility convention
+  (uppercase = public, lowercase = package). Registered in the Language Registry with
+  `tree-sitter-go.wasm`.
+- **Go complexity profile**: `for`-only loops (no while/foreach), `select` as a
+  channel-specific branch keyword.
+- **Go in Preferences**: Go added to the primary language dropdown with framework
+  options (Gin, Echo, Fiber, Chi, Gorilla Mux).
+- **Go package field in create-file modal**: when creating a `.go` file, a "Go package"
+  input appears — auto-filled from the directory name, user-editable.
+- **Distinct struct/interface colors**: struct badge steel-blue (#569cd6), interface
+  badge green-teal (#43d9ad) — visually distinguishable at a glance across all languages.
+- **Go package badge**: folders containing Go types show a small green `pkg` badge.
+- **Pause/continue cycle for flow simulation**: the Run button now cycles through
+  Run → Pause → Continue instead of being a one-shot action.
+
+### Fixed
+- Extension build script now copies `tree-sitter-go.wasm` to `dist/wasm/`.
+- Synced `package-lock.json` with husky and commitlint dependencies for CI (`npm ci`).
+
 ## [0.1.0] - 2026-06-02
 
 Initial release.
@@ -42,5 +65,6 @@ Initial release.
   grammars/webview assets, so it installs and runs on any machine with no `npm install`
   and no local server. Everything runs locally with your own Claude tokens.
 
-[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/berkcansavur/perceptor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/berkcansavur/perceptor/releases/tag/v0.1.0
