@@ -1,6 +1,6 @@
 {
   "name": "perceptor-monorepo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Interactive dependency/behavior map for a code repository — workspaces root.",
   "license": "MIT",

@@ -39,6 +39,12 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
+      - name: Publish to VS Code Marketplace
+        working-directory: packages/extension
+        run: npx --yes @vscode/vsce publish --no-dependencies --packagePath perceptor-${{ steps.version.outputs.version }}.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
