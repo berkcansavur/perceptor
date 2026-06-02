@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import type { CoreService } from "repo-visualiser/dist/service";
+import type { CoreService } from "perceptor-core/dist/service";
 import { createNonce, renderWebviewHtml } from "./webviewHtml";
 
 type RpcMessage = {
@@ -20,7 +20,7 @@ export class VisualiserPanel {
     private readonly core: CoreService,
     private readonly webDirectory: string
   ) {
-    this.panel = vscode.window.createWebviewPanel("repoVisualiser", "Repo Visualiser", vscode.ViewColumn.One, {
+    this.panel = vscode.window.createWebviewPanel("perceptor", "Perceptor", vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
       localResourceRoots: [vscode.Uri.file(this.webDirectory)],

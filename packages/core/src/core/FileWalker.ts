@@ -2,7 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { LanguageRegistry } from "./LanguageRegistry";
 
-const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set([
+// Directories whose contents never affect the graph: dependencies, build output, IDE/
+// tooling state, and our own writes. Exported so the file watcher shares the exact same
+// policy — otherwise it re-analyzes on churn (e.g. dist/ rebuilds) the walker would skip,
+// which loops the UI through endless "refresh" reloads.
+export const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set([
   "node_modules",
   ".git",
   ".gradle",
@@ -20,6 +24,17 @@ const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set([
   "Obj",
   ".visualise",
 ]);
+
+// A path segment to skip: an explicitly-ignored directory, or any dotfile/dot-directory
+// (covers .next, .turbo, .cache, .DS_Store, … without listing each).
+export function isIgnoredSegment(name: string): boolean {
+  return IGNORED_DIRECTORIES.has(name) || name.startsWith(".");
+}
+
+// True when any segment of a relative path lies under an ignored location.
+export function pathIsIgnored(relativePath: string): boolean {
+  return relativePath.split(/[\\/]+/).some((segment) => segment.length > 0 && isIgnoredSegment(segment));
+}
 
 export class FileWalker {
   constructor(private readonly registry: LanguageRegistry) {}
@@ -66,7 +81,7 @@ export class FileWalker {
     }
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        if (IGNORED_DIRECTORIES.has(entry.name) || entry.name.startsWith(".")) {
+        if (isIgnoredSegment(entry.name)) {
           continue;
         }
         const fullPath = path.join(directory, entry.name);

@@ -3,13 +3,13 @@ import * as path from "path";
 import { analyzeToFile } from "./core";
 import { resolveInstalledAssets } from "./core/installedAssets";
 
-const HELP_TEXT = `repo-visualiser — dependency/behavior map analyzer
+const HELP_TEXT = `perceptor-core — dependency/behavior map analyzer
 
 Usage:
   visualise [path]
 
 Writes <path>/.visualise/graph.json. The interactive map lives in the
-"Repo Visualiser" VS Code extension (Cmd+Shift+P → "Repo Visualiser: Open").
+"Perceptor" VS Code extension (Cmd+Shift+P → "Perceptor: Open").
 
 Arguments:
   path           Repository to analyze (default: current directory)

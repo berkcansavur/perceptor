@@ -34,11 +34,6 @@ export class App {
   private readonly tasksPanel = new TasksPanel(this.api, this.bus);
   private readonly chatPanel = new ChatPanel(this.api, this.bus);
   private readonly changesView = new ChangesView(this.api, this.bus);
-  private readonly autoProcess = new AutoProcessControl(
-    this.api,
-    { container: "auto-process", toggle: "auto-toggle", label: "auto-label-text", status: "auto-status" },
-    this.bus
-  );
   private readonly chatAutoProcess = new AutoProcessControl(
     this.api,
     { container: "chat-auto", toggle: "chat-auto-toggle", label: "chat-auto-label", status: "chat-auto-status" },
@@ -63,7 +58,6 @@ export class App {
     this.tasksPanel.setup();
     this.chatPanel.setup();
     this.changesView.setup();
-    this.autoProcess.setup();
     this.chatAutoProcess.setup();
     this.toolbar.setup();
     this.openRepo.setup();

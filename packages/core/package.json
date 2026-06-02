@@ -1,7 +1,8 @@
 {
-  "name": "repo-visualiser",
+  "name": "perceptor-core",
   "version": "0.1.0",
   "description": "Interactive dependency/behavior map for a code repository (analyzer + CLI).",
+  "author": "Berkcan Şavur",
   "license": "MIT",
   "bin": {
     "visualise": "dist/cli.js"
@@ -12,7 +13,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node build-web.js",

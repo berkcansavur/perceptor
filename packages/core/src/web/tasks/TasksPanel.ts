@@ -178,13 +178,10 @@ export class TasksPanel {
     // Tasks is Claude's live work queue: only what's running now (holds a process
     // lock) or waiting on Claude (pending/approved, or a reply it hasn't answered).
     // Finished work — applied, proposed-for-review, rejected — leaves the tab; those
-    // are reviewed from the chat request's "View changes", not here.
-    tasks = tasks.filter(
-      (task) =>
-        !task.dismissed &&
-        task.type !== "describe-behavior" &&
-        (Boolean(task.lock) || this.awaitsClaude(task))
-    );
+    // are reviewed from the chat request's "View changes", not here. An Explain
+    // (describe-behavior) request shows here while it runs, then self-dismisses once the
+    // one-line summary lands — so the user can see it was actually picked up.
+    tasks = tasks.filter((task) => !task.dismissed && (Boolean(task.lock) || this.awaitsClaude(task)));
     byId("tasks-count").textContent = String(tasks.length);
 
     const waiting = tasks.filter((task) => this.awaitsClaude(task)).length;
@@ -299,6 +296,10 @@ export class TasksPanel {
       if (description) {
         detail = `<div class="task-desc">${escapeHtml(description)}</div>`;
       }
+    } else if (task.type === "describe-behavior") {
+      title = `<span class="task-edit">✨ ${escapeHtml(fromBehavior(task))}()</span> <span class="muted">${t(
+        "task.in"
+      )} ${escapeHtml(fromClass(task))}</span>`;
     } else {
       title = `${escapeHtml(fromBehavior(task))}() <span class="muted">${escapeHtml(
         fromClass(task)
@@ -306,6 +307,16 @@ export class TasksPanel {
     }
 
     const isDone = task.status === "applied" || task.status === "rejected";
+    // A describe-behavior (Explain) request is a read-only status card: no diff to chat
+    // about and no reply thread, so it shows neither the "view in chat" jump nor the
+    // reply composer.
+    const isDescribe = task.type === "describe-behavior";
+    const viewChat = isDescribe
+      ? ""
+      : `<button class="task-viewchat" data-view-chat="${task.id}" title="${t("tasks.viewInChat")}">💬</button>`;
+    const replyInput = isDescribe
+      ? ""
+      : `<input class="task-chat" data-chat="${task.id}" placeholder="${t("task.chat")}" />`;
     return `<div class="task-card${isDone ? " task-done collapsed" : ""}" data-id="${task.id}">
       <div class="task-head">
         <span class="status-badge status-${task.status}">${t("status." + task.status)}</span>
@@ -320,7 +331,7 @@ export class TasksPanel {
         }
         <span class="task-title">${title}</span>
         ${usageBadge(task.usage)}
-        <button class="task-viewchat" data-view-chat="${task.id}" title="${t("tasks.viewInChat")}">💬</button>
+        ${viewChat}
         ${
           isDone
             ? `<button class="task-dismiss" data-dismiss="${task.id}" title="${t("task.dismiss")}">×</button>`
@@ -335,7 +346,7 @@ export class TasksPanel {
         ${actions}
         <div class="task-messages">${messages}</div>
         <div class="task-activity chat-activity hidden" data-activity-for="${task.id}"></div>
-        <input class="task-chat" data-chat="${task.id}" placeholder="${t("task.chat")}" />
+        ${replyInput}
       </div>
     </div>`;
   }

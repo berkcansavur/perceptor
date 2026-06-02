@@ -98,6 +98,12 @@ export type RequestSpec = {
 export type DescribeBehaviorSpec = {
   line: number;
   endLine: number;
+  // A compact, deterministically-extracted control-flow outline (input/calls/branches/
+  // returns/throws as indented text), built client-side by the analyzer — NOT by Claude.
+  // Handed to the describe skill as the authoritative structure so it narrates the method
+  // branch-by-branch without re-deriving control flow, keeping the run token-cheap. Empty
+  // when the method has no extractable flow.
+  flowOutline: string;
 }
 
 // --- TaskKind: type-discriminated "what the task targets". from/to/spec exist only
@@ -222,7 +228,7 @@ export type ApiRequest = {
   deleteTask: { id: string };
   savePreferences: CodingPreferences;
   behaviorSummary: { file: string; behavior: string };
-  complexity: { code: string; name: string };
+  complexity: { code: string; name: string; file?: string };
   create: CreatePayload;
   setAuto: { enabled: boolean };
   stopProcessing: { taskId: string | null };
@@ -325,6 +331,97 @@ export type ComplexityReport = {
   recursive: boolean;
   loc: number;
   scale: ComplexityScale[];
+}
+
+// Data-access risk surfaced from STATIC analysis only — never a runtime measurement. Each
+// kind names a query/ORM anti-pattern we can defensibly detect from source text; the UI
+// labels them as risk signals, not timings (real latency depends on data, indexes & plan).
+export type QueryRiskKind =
+  | "nPlusOne" // a query call inside a loop / .map / forEach / foreach
+  | "selectStar" // SELECT * — fetches every column
+  | "noWhere" // SELECT without WHERE (and no LIMIT) — full scan
+  | "writeNoWhere" // UPDATE/DELETE without WHERE — touches every row
+  | "leadingWildcard" // LIKE '%…' — cannot use an index
+  | "manyJoins" // 3+ JOINs in one statement
+  | "unboundedFind" // findAll()/findMany() with no filter
+  | "eagerInclude"; // 3+ chained Include()/include eager loads
+
+export type QuerySeverity = "moderate" | "high";
+
+// One detected anti-pattern. `detail` is an optional already-localised fragment (e.g. the
+// offending table or a count) the UI may append; `kind` selects the explanatory message.
+export type QueryFinding = {
+  kind: QueryRiskKind;
+  severity: QuerySeverity;
+  detail?: string;
+}
+
+// Aggregate data-access risk for one method. `risk` mirrors the complexity strip's bands
+// so the UI can reuse the same colour vocabulary. Empty `findings` ⇒ nothing to show.
+export type QueryReport = {
+  risk: "low" | "moderate" | "risky" | "high";
+  findings: QueryFinding[];
+}
+
+// A source-derived "storyboard" of how one method runs, read straight off the text (never
+// executed — so it's the static call order, not a runtime trace). Discriminated by `kind`
+// so each step carries exactly its own fields: the inputs it receives, each call it makes
+// (what it calls, with what, whether awaited, what it captures), and what it returns. The
+// UI animates these in order; a later layer can hang Claude narration off the same steps.
+export type FlowInputStep = {
+  kind: "input";
+  params: string[];
+};
+
+// One call the body makes. `receiver` is the dotted object the call lands on
+// (`this.driverPickupService`) or null for a bare/free call; `callee` is the method;
+// `assignsTo` is the variable that captures the result (or null if discarded); `awaited`
+// marks an `await`ed async hop.
+export type FlowCallStep = {
+  kind: "call";
+  receiver: string | null;
+  callee: string;
+  args: string[];
+  awaited: boolean;
+  assignsTo: string | null;
+};
+
+export type FlowReturnStep = {
+  kind: "return";
+  expression: string;
+};
+
+// A `throw` the body makes (often a guard: `throw new BusinessException(...)`). Carried as
+// its own step so the storyboard can show *where* a method bails out — typically inside a
+// branch, which is exactly the logic the user wants to follow.
+export type FlowThrowStep = {
+  kind: "throw";
+  expression: string;
+};
+
+// An `if (condition) { … } else { … }` in the body. `condition` is the raw source text of
+// the test (e.g. `!route`, `stops.length > 2`); `whenTrue`/`whenFalse` are the nested
+// storyboards for each path (`whenFalse` is empty when there's no `else`). The tree is
+// recursive — branches nest branches — so the UI can render which calls happen in which
+// case and a simulator can light up only the path a given payload takes.
+export type FlowBranchStep = {
+  kind: "branch";
+  condition: string;
+  whenTrue: FlowStep[];
+  whenFalse: FlowStep[];
+};
+
+export type FlowStep =
+  | FlowInputStep
+  | FlowCallStep
+  | FlowReturnStep
+  | FlowThrowStep
+  | FlowBranchStep;
+
+// The ordered storyboard. Empty `steps` ⇒ nothing worth animating (e.g. a one-liner with
+// no calls and no inputs); the UI then shows no flow section.
+export type FlowReport = {
+  steps: FlowStep[];
 }
 
 export type PreferredLanguage = "typescript" | "java" | "csharp";

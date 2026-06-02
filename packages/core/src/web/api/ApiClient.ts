@@ -10,12 +10,18 @@ import type {
   ComplexityReport,
   CreatePayload,
   EnqueuePayload,
+  FlowReport,
   Graph,
   MetaResponse,
+  QueryReport,
   Task,
   TaskStatus,
   TemplateRegistry,
 } from "../types";
+
+// Complexity, data-access risk and the run-flow storyboard are computed together and
+// returned in one response.
+export type ComplexityResult = { report: ComplexityReport; query: QueryReport; flow: FlowReport };
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -49,7 +55,7 @@ type ApiContract = {
   getPreferences: { preferences: CodingPreferences };
   savePreferences: { preferences: CodingPreferences };
   behaviorSummary: { summary: BehaviorSummary | null };
-  complexity: { report: ComplexityReport };
+  complexity: ComplexityResult;
   create: { stats: Graph["stats"] };
   autoStatus: AutoStatus;
   autoActivity: { activities: AutoActivity[] };
@@ -83,13 +89,14 @@ export interface Api {
   savePreferences(preferences: CodingPreferences): Promise<void>;
   sendRequest(description: string): Promise<void>;
   behaviorSummary(file: string, behavior: string): Promise<BehaviorSummary | null>;
-  complexity(code: string, name: string): Promise<ComplexityReport>;
+  complexity(code: string, name: string, file?: string): Promise<ComplexityResult>;
   describeBehavior(context: {
     className: string;
     file: string;
     behavior: string;
     line: string;
     endLine: string;
+    flowOutline: string;
   }): Promise<void>;
   create(payload: CreatePayload): Promise<void>;
   autoStatus(): Promise<AutoStatus>;
@@ -245,9 +252,8 @@ export class ApiClient implements Api {
     return summary;
   }
 
-  async complexity(code: string, name: string): Promise<ComplexityReport> {
-    const { report } = await this.call("complexity", { code, name });
-    return report;
+  async complexity(code: string, name: string, file?: string): Promise<ComplexityResult> {
+    return this.call("complexity", { code, name, file });
   }
 
   // Asks Claude to summarize a method; the skill writes it to the cache the drawer
@@ -258,11 +264,16 @@ export class ApiClient implements Api {
     behavior: string;
     line: string;
     endLine: string;
+    flowOutline: string;
   }): Promise<void> {
     await this.call("enqueueTask", {
       type: "describe-behavior",
       from: { class: context.className, file: context.file, behavior: context.behavior },
-      spec: { line: Number(context.line), endLine: Number(context.endLine) },
+      spec: {
+        line: Number(context.line),
+        endLine: Number(context.endLine),
+        flowOutline: context.flowOutline,
+      },
     });
   }
 

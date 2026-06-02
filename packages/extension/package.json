@@ -1,9 +1,10 @@
 {
-  "name": "repo-visualiser-vscode",
-  "displayName": "Repo Visualiser",
-  "description": "Interactive dependency/behavior map for your repository, with Claude-powered edits that use your own local Claude CLI and tokens.",
+  "name": "perceptor",
+  "displayName": "Perceptor",
+  "description": "Perceptor X-rays your repository: an interactive dependency & behavior map plus per-method analysis — Big-O complexity and N+1 / SQL-ORM query risk — with optional Claude-powered edits that use your own local Claude CLI and tokens.",
   "version": "0.1.0",
   "publisher": "berkcansavur",
+  "author": "Berkcan Şavur",
   "license": "MIT",
   "icon": "media/icon.png",
   "engines": {
@@ -17,6 +18,10 @@
     "visualization",
     "dependency graph",
     "architecture",
+    "code analysis",
+    "complexity",
+    "big o",
+    "n+1",
     "claude",
     "refactoring"
   ],
@@ -40,20 +45,20 @@
   "contributes": {
     "commands": [
       {
-        "command": "repoVisualiser.open",
+        "command": "perceptor.open",
         "title": "Open",
-        "category": "Repo Visualiser"
+        "category": "Perceptor"
       }
     ],
     "configuration": {
-      "title": "Repo Visualiser",
+      "title": "Perceptor",
       "properties": {
-        "repoVisualiser.claudePath": {
+        "perceptor.claudePath": {
           "type": "string",
-          "default": "claude",
-          "description": "Path to the Claude CLI used to process tasks. Must be on PATH or an absolute path."
+          "default": "",
+          "description": "Path to the Claude CLI used to process tasks. Leave empty to auto-detect via your login shell (recommended). Set an absolute path to override."
         },
-        "repoVisualiser.autoProcessOnOpen": {
+        "perceptor.autoProcessOnOpen": {
           "type": "boolean",
           "default": false,
           "description": "Automatically enable Auto-process when the panel opens. Off by default to avoid spending Claude tokens unexpectedly."
@@ -73,7 +78,7 @@
     "@types/vscode": "^1.80.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.21.0",
-    "repo-visualiser": "*",
+    "perceptor-core": "*",
     "vitest": "^3.2.4"
   }
 }

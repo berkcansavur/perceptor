@@ -14,13 +14,63 @@ function isInDocker(): boolean {
   return Boolean(process.env["CONTAINER_WORKSPACE"]);
 }
 
+// A GUI-launched VS Code (Dock/Finder) inherits launchd's minimal PATH, which omits
+// Homebrew/nvm/asdf/etc — so the extension host can't see `claude` even though the
+// user's terminal can. Instead of hard-coding install locations, we ask the user's own
+// login shell, exactly once: it yields both the binary's absolute path (`command -v`)
+// and the real PATH to hand the child, so the tool adapts to whatever environment the
+// user actually has. Cached because launching a login shell isn't free.
+type ShellResolution = { command: string | null; path: string | null };
+const PATH_MARKER = "__VISUALISE_PATH__";
+let shellResolution: ShellResolution | undefined;
+
+function resolveViaLoginShell(): ShellResolution {
+  if (shellResolution) {
+    return shellResolution;
+  }
+  const shell = process.env["SHELL"];
+  if (!shell) {
+    return (shellResolution = { command: null, path: null });
+  }
+  try {
+    const probe = spawnSync(shell, ["-lic", `command -v claude; echo ${PATH_MARKER}$PATH`], { encoding: "utf8" });
+    const stdout = probe.stdout || "";
+    const pathLine = new RegExp(`${PATH_MARKER}(.*)`).exec(stdout);
+    const command = stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.length > 0 && !line.startsWith(PATH_MARKER) && path.isAbsolute(line) && fs.existsSync(line));
+    shellResolution = { command: command ?? null, path: pathLine && pathLine[1] ? pathLine[1].trim() : null };
+  } catch {
+    shellResolution = { command: null, path: null };
+  }
+  return shellResolution;
+}
+
+// Resolve claude, preferring the explicit setting (VISUALISE_CLAUDE_BIN, wired from the
+// perceptor.claudePath setting), then the login shell, then whatever the inherited
+// PATH can resolve. Returns an absolute path whenever possible so spawn() doesn't depend
+// on the host process PATH.
 function detectClaudeCommand(): string | null {
   const override = process.env["VISUALISE_CLAUDE_BIN"];
-  if (override) {
-    return override;
+  if (override && override.trim()) {
+    return override.trim();
+  }
+  const resolved = resolveViaLoginShell().command;
+  if (resolved) {
+    return resolved;
   }
   const probe = spawnSync("claude", ["--version"], { stdio: "ignore" });
   return probe.error ? null : "claude";
+}
+
+// PATH for the spawned claude: the user's real (login-shell) PATH so claude locates the
+// tools it shells out to (git, rg, node…) exactly as it would in their terminal, with
+// the binary's own directory ensured. No environment-specific paths hard-coded.
+function childPath(command: string): string {
+  const base = (resolveViaLoginShell().path || process.env["PATH"] || "").split(path.delimiter);
+  const binDir = path.isAbsolute(command) ? path.dirname(command) : "";
+  return [binDir, ...base].filter((entry, index, all) => entry && all.indexOf(entry) === index).join(path.delimiter);
 }
 
 class SpawnedRun implements AutoProcessRun {
@@ -148,7 +198,7 @@ export class ClaudeProcessRunner implements AutoProcessRunner {
     const child = spawn(
       this.command,
       [...sessionArg, "-p", prompt, "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"],
-      { cwd: rootDirectory, stdio: ["ignore", "pipe", "pipe"] }
+      { cwd: rootDirectory, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, PATH: childPath(this.command) } }
     );
     return new SpawnedRun(child, logPath);
   }

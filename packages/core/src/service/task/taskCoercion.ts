@@ -85,7 +85,7 @@ function requestSpec(value: unknown): RequestSpec {
 
 function describeSpec(value: unknown): DescribeBehaviorSpec {
   const raw = record(value);
-  return { line: num(raw["line"]), endLine: num(raw["endLine"]) };
+  return { line: num(raw["line"]), endLine: num(raw["endLine"]), flowOutline: str(raw["flowOutline"]) };
 }
 
 export function coerceKind(type: unknown, from: unknown, to: unknown, spec: unknown): TaskKind {

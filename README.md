@@ -63,6 +63,12 @@ code --install-extension repo-visualiser-vscode-<version>.vsix
 
 > Requires the `code` CLI on PATH (VS Code → `Cmd+Shift+P` → *Shell Command: Install
 > 'code' command in PATH*) and the Claude CLI for the Claude-powered task features.
+>
+> The Claude CLI is located automatically via your login shell, so it works even when
+> VS Code is launched from the Dock/Finder (whose PATH omits Homebrew/nvm). If yours
+> lives somewhere unusual, set an absolute path in the **`repoVisualiser.claudePath`**
+> setting. The CLI uses your existing Claude login — authenticate once with `claude`
+> in a terminal and the extension reuses that session.
 
 ## Develop
 
@@ -92,7 +98,9 @@ node packages/core/dist/cli.js "<TARGET_ROOT>"
 # writes <TARGET_ROOT>/.visualise/graph.json
 ```
 
-Add `.visualise/` to the target repo's `.gitignore`.
+The tool writes its scratch state under `<TARGET_ROOT>/.visualise/` (graph cache, the
+pending-actions queue, logs) and, when the target is a git repo, automatically adds
+`.visualise/` to its `.gitignore` so none of it is ever committed.
 
 ## License
 

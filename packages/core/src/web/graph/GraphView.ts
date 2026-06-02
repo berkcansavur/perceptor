@@ -63,7 +63,7 @@ export class GraphView {
     if (width < 1 || height < 1 || rect.width < 10 || rect.height < 10) {
       return;
     }
-    const scale = Math.max(0.1, Math.min(1.6, Math.min(rect.width / width, rect.height / height) * 0.9));
+    const scale = Math.max(0.05, Math.min(1.6, Math.min(rect.width / width, rect.height / height) * 0.9));
     this.state.view.scale = scale;
     this.state.view.x = (rect.width - width * scale) / 2 - bounds.minX * scale;
     this.state.view.y = (rect.height - height * scale) / 2 - bounds.minY * scale;
@@ -194,7 +194,7 @@ export class GraphView {
         this.hideCard();
         this.state.userAdjusted = true;
         const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
-        const newScale = Math.max(0.1, Math.min(3, this.state.view.scale * factor));
+        const newScale = Math.max(0.05, Math.min(3, this.state.view.scale * factor));
         const rect = this.viewport.getBoundingClientRect();
         const pointerX = event.clientX - rect.left;
         const pointerY = event.clientY - rect.top;

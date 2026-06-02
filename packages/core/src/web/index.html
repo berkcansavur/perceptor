@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Repo Visualiser</title>
+    <title>Perceptor</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <header id="toolbar">
-      <span id="brand">repo-visualiser</span>
+      <span id="brand">Perceptor</span>
       <button id="open-repo" data-i18n="btn.open">📂 Open…</button>
       <span id="repo-name" class="muted" title=""></span>
       <div id="mode-toggle">
@@ -64,23 +64,29 @@
     </section>
 
     <aside id="behavior-drawer" class="hidden">
+      <div id="behavior-drawer-resizer" title="Drag to resize"></div>
       <div class="drawer-header">
         <span id="behavior-drawer-title"></span>
         <button id="behavior-drawer-close" title="Close">×</button>
       </div>
-      <code id="behavior-drawer-sig"></code>
-      <div class="behavior-drawer-section">
-        <div class="behavior-drawer-label" data-i18n="cx.heading">Complexity</div>
-        <div id="behavior-drawer-complexity" class="cx-unavailable"></div>
-      </div>
-      <div class="behavior-drawer-section">
-        <div class="behavior-drawer-label" data-i18n="changes.summary">What it does</div>
-        <div id="behavior-drawer-summary" class="behavior-drawer-summary muted"></div>
-        <button id="behavior-explain">✨ <span data-i18n="behavior.explain">Explain</span></button>
-      </div>
-      <div class="behavior-drawer-section">
-        <div class="behavior-drawer-label" data-i18n="behavior.source">Source</div>
-        <pre id="behavior-drawer-code" class="code-view"></pre>
+      <div class="behavior-drawer-body">
+        <code id="behavior-drawer-sig"></code>
+        <div class="behavior-drawer-section">
+          <div class="behavior-drawer-label" data-i18n="cx.heading">Complexity</div>
+          <div id="behavior-drawer-complexity" class="cx-unavailable"></div>
+        </div>
+        <div class="behavior-drawer-section">
+          <div class="behavior-drawer-label" data-i18n="changes.summary">What it does</div>
+          <div id="behavior-drawer-summary" class="behavior-drawer-summary muted"></div>
+          <button id="behavior-explain">✨ <span data-i18n="behavior.explain">Explain</span></button>
+        </div>
+        <div id="behavior-drawer-flow-section" class="behavior-drawer-section hidden">
+          <div id="behavior-drawer-flow"></div>
+        </div>
+        <div class="behavior-drawer-section">
+          <div class="behavior-drawer-label" data-i18n="behavior.source">Source</div>
+          <pre id="behavior-drawer-code" class="code-view"></pre>
+        </div>
       </div>
       <div class="behavior-drawer-footer">
         <button id="behavior-edit" class="primary" data-i18n="edit.btn">Edit</button>
@@ -93,11 +99,6 @@
         <button id="tasks-close" title="Close">×</button>
       </div>
       <div id="tasks-hint" class="muted" data-i18n="tasks.hint"></div>
-      <label id="auto-process" class="hidden">
-        <input id="auto-toggle" type="checkbox" />
-        <span id="auto-label-text" data-i18n="auto.label">Auto-process (uses Claude tokens)</span>
-        <span id="auto-status" class="muted"></span>
-      </label>
       <div id="tasks-waiting" class="hidden"></div>
       <div id="tasks-list"></div>
     </aside>

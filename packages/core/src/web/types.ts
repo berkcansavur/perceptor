@@ -9,6 +9,16 @@ export type {
   CodingPreferences,
   ComplexityReport,
   ComplexityScale,
+  FlowReport,
+  FlowStep,
+  FlowInputStep,
+  FlowCallStep,
+  FlowReturnStep,
+  FlowThrowStep,
+  FlowBranchStep,
+  QueryReport,
+  QueryFinding,
+  QueryRiskKind,
   NamingPreferences,
   PreferredLanguage,
   QualityGatePreferences,
@@ -125,6 +135,7 @@ export type AppEvents = {
   "auto:changed": void;
   "changes:focus": string | null;
   "chat:select": string;
+  "chat:new": { description: string };
   "search:changed": void;
   "lang:changed": void;
   "toast": string;

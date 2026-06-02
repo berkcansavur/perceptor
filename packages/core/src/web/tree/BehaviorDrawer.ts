@@ -1,9 +1,14 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { AppEvents } from "../types";
+import type { AppEvents, FlowReport } from "../types";
 import { byId } from "../dom";
 import { t } from "../i18n";
 import { complexityStrip } from "../complexity/complexityStrip";
+import { queryStrip } from "../complexity/queryStrip";
+import { flowStrip } from "../complexity/flowStrip";
+import { flowOutline } from "../complexity/flowOutline";
+import { FlowPlayer } from "../complexity/FlowPlayer";
+import { FlowSimulator } from "../complexity/FlowSimulator";
 
 type BehaviorContext = AppEvents["behavior:open"];
 
@@ -14,6 +19,11 @@ const SUMMARY_TIMEOUT_MS = 120000;
 // and an optional Claude one-line summary, with an Edit button into the edit flow.
 export class BehaviorDrawer {
   private readonly drawer = byId("behavior-drawer");
+  private readonly flowPlayer = new FlowPlayer();
+  private readonly flowSimulator = new FlowSimulator();
+  // The most recently extracted control-flow tree for the open method, kept so Explain can
+  // hand its compact outline to Claude as token-optimized narration context. Reset on open.
+  private lastFlow: FlowReport = { steps: [] };
   private summaryPollTimer: number | null = null;
   private context: BehaviorContext = {
     className: "",
@@ -34,15 +44,46 @@ export class BehaviorDrawer {
     byId("behavior-drawer-close").addEventListener("click", () => this.close());
     byId("behavior-edit").addEventListener("click", () => this.edit());
     byId("behavior-explain").addEventListener("click", () => void this.explain());
+    this.initResize();
+  }
+
+  // Let the user widen the drawer by dragging its left edge. The panel is right-anchored, so
+  // growing its width expands it leftward; it can never shrink below its CSS min-width (the
+  // size it opens at). Nothing else on the page is touched.
+  private initResize(): void {
+    const handle = byId("behavior-drawer-resizer");
+    handle.addEventListener("pointerdown", (event: PointerEvent) => {
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      document.body.classList.add("behavior-resizing");
+      const startX = event.clientX;
+      const startWidth = this.drawer.getBoundingClientRect().width;
+      const move = (move: PointerEvent): void => {
+        // Drag left (smaller clientX) → wider drawer. CSS min/max-width clamp the extremes.
+        this.drawer.style.width = `${startWidth + (startX - move.clientX)}px`;
+      };
+      const up = (): void => {
+        handle.releasePointerCapture(event.pointerId);
+        document.body.classList.remove("behavior-resizing");
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
   }
 
   private async open(payload: BehaviorContext): Promise<void> {
     this.stopSummaryPoll();
     this.context = payload;
+    this.lastFlow = { steps: [] };
     byId("behavior-drawer-title").textContent = `${payload.behavior}()  ·  ${payload.className}`;
     byId("behavior-drawer-sig").textContent = payload.signature;
     byId("behavior-drawer-code").textContent = "";
     byId("behavior-drawer-complexity").innerHTML = "";
+    this.flowPlayer.stop();
+    byId("behavior-drawer-flow").innerHTML = "";
+    byId("behavior-drawer-flow-section").classList.add("hidden");
     this.drawer.classList.remove("hidden");
     document.body.classList.add("behavior-open");
     void this.loadSource();
@@ -69,11 +110,26 @@ export class BehaviorDrawer {
       return;
     }
     try {
-      const report = await this.api.complexity(code, this.context.behavior);
+      const { report, query, flow } = await this.api.complexity(code, this.context.behavior, this.context.file);
       element.classList.remove("cx-unavailable");
-      element.innerHTML = complexityStrip(report);
+      element.innerHTML = complexityStrip(report) + queryStrip(query);
+      this.renderFlow(flow);
     } catch {
       element.textContent = "";
+    }
+  }
+
+  private renderFlow(flow: FlowReport): void {
+    this.lastFlow = flow;
+    const container = byId("behavior-drawer-flow");
+    const section = byId("behavior-drawer-flow-section");
+    const markup = flowStrip(flow);
+    container.innerHTML = markup;
+    section.classList.toggle("hidden", markup === "");
+    const strip = container.querySelector<HTMLElement>(".fx-strip");
+    if (strip) {
+      this.flowPlayer.attach(strip);
+      this.flowSimulator.attach(strip, flow, this.flowPlayer);
     }
   }
 
@@ -100,11 +156,32 @@ export class BehaviorDrawer {
     const { file, behavior } = this.context;
     const baseline = await this.api.behaviorSummary(file, behavior);
     const baselineAt = baseline?.at ?? "";
-    await this.api.describeBehavior(this.context);
+    await this.api.describeBehavior({
+      className: this.context.className,
+      file: this.context.file,
+      behavior: this.context.behavior,
+      line: this.context.line,
+      endLine: this.context.endLine,
+      flowOutline: flowOutline(this.lastFlow),
+    });
     const element = byId("behavior-drawer-summary");
-    element.textContent = t("behavior.explaining");
+    // Without Auto-process enabled, the queued describe task is never picked up — so the
+    // poll below would spin forever and the user would see "summarizing…" with nothing
+    // happening. Tell them how to make it run instead of leaving a silent spinner.
+    const enabled = await this.autoEnabled();
+    element.textContent = enabled ? t("behavior.explaining") : t("behavior.explainOffline");
     element.classList.add("muted");
-    this.pollSummary(file, behavior, baselineAt);
+    if (enabled) {
+      this.pollSummary(file, behavior, baselineAt);
+    }
+  }
+
+  private async autoEnabled(): Promise<boolean> {
+    try {
+      return (await this.api.autoStatus()).enabled;
+    } catch {
+      return false;
+    }
   }
 
   private pollSummary(file: string, behavior: string, baselineAt: string): void {
@@ -167,6 +244,7 @@ export class BehaviorDrawer {
 
   private close(): void {
     this.stopSummaryPoll();
+    this.flowPlayer.stop();
     this.drawer.classList.add("hidden");
     document.body.classList.remove("behavior-open");
   }

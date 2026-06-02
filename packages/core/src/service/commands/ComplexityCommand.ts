@@ -10,10 +10,14 @@ export class ComplexityCommand extends Command<ApiRequest["complexity"], Awaited
   }
 
   protected parse(payload: Record<string, unknown>): ApiRequest["complexity"] {
-    return { code: this.text(payload, "code"), name: this.text(payload, "name") };
+    const base = { code: this.text(payload, "code"), name: this.text(payload, "name") };
+    const file = this.optionalText(payload, "file");
+    // Only attach `file` when present — exactOptionalPropertyTypes forbids an explicit
+    // `file: undefined` against the optional `file?: string` field.
+    return file === null ? base : { ...base, file };
   }
 
   protected run(request: ApiRequest["complexity"]): ReturnType<AnalysisService["complexity"]> {
-    return this.service.complexity(request.code, request.name);
+    return this.service.complexity(request.code, request.name, request.file);
   }
 }

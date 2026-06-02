@@ -4,7 +4,7 @@
 export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) {
-    throw new Error(`Repo Visualiser: missing element #${id}`);
+    throw new Error(`Perceptor: missing element #${id}`);
   }
   return element as T;
 }

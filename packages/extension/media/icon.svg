@@ -1,37 +1,75 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
+    <!-- Deep navy brand background (matches galleryBanner #0b0e14). -->
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1e2233"/>
-      <stop offset="1" stop-color="#0d0f18"/>
+      <stop offset="0" stop-color="#13203a"/>
+      <stop offset="1" stop-color="#070a12"/>
+    </linearGradient>
+    <!-- Cyan accent — one consistent hue, premium dev-tool look. -->
+    <linearGradient id="node" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5fe6f5"/>
+      <stop offset="1" stop-color="#2b9fc4"/>
     </linearGradient>
     <linearGradient id="hub" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7c5cff"/>
-      <stop offset="1" stop-color="#4338ca"/>
+      <stop offset="0" stop-color="#7fe9ff"/>
+      <stop offset="1" stop-color="#2b86d6"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#7c5cff" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#7c5cff" stop-opacity="0"/>
+    <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6fe4f7"/>
+      <stop offset="1" stop-color="#2480ab"/>
+    </linearGradient>
+    <!-- The single AI "spark" node — warm amber, glowing. -->
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd877"/>
+      <stop offset="1" stop-color="#f5973a"/>
+    </linearGradient>
+    <radialGradient id="sparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="irisGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3ec2d6" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#3ec2d6" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <rect x="0" y="0" width="128" height="128" rx="28" fill="url(#bg)"/>
-  <circle cx="64" cy="64" r="40" fill="url(#glow)"/>
+  <!-- Rounded-square canvas with a soft central glow. -->
+  <rect x="0" y="0" width="128" height="128" rx="29" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="46" fill="url(#irisGlow)"/>
 
-  <g stroke="#5b6079" stroke-width="3" stroke-linecap="round" opacity="0.9">
-    <line x1="64" y1="64" x2="30" y2="34"/>
-    <line x1="64" y1="64" x2="98" y2="36"/>
-    <line x1="64" y1="64" x2="32" y2="96"/>
-    <line x1="64" y1="64" x2="96" y2="94"/>
-    <line x1="30" y1="34" x2="32" y2="96"/>
-    <line x1="98" y1="36" x2="96" y2="94"/>
+  <!-- Perception lens: an outer scanner ring + reticle ticks. The eye that "perceives"
+       the code. -->
+  <circle cx="64" cy="64" r="45" fill="none" stroke="url(#lens)" stroke-width="4.5"/>
+  <g stroke="#7fe9ff" stroke-width="3" stroke-linecap="round" opacity="0.85">
+    <line x1="64" y1="13" x2="64" y2="22"/>
+    <line x1="64" y1="106" x2="64" y2="115"/>
+    <line x1="13" y1="64" x2="22" y2="64"/>
+    <line x1="106" y1="64" x2="115" y2="64"/>
   </g>
 
+  <!-- Iris / aperture: a hexagonal opening — the optical 'pupil' through which the
+       dependency graph is read. -->
+  <polygon points="64,38 86.5,51 86.5,77 64,90 41.5,77 41.5,51"
+           fill="#0d1830" fill-opacity="0.55"
+           stroke="url(#lens)" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Inside the lens: the code map — a hub linked to satellite nodes, with one amber AI
+       spark. This is what Perceptor sees. -->
+  <g stroke="#46c8e0" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.6">
+    <line x1="64" y1="64" x2="64" y2="42"/>
+    <line x1="64" y1="64" x2="46" y2="74"/>
+    <line x1="64" y1="64" x2="82" y2="74"/>
+    <line x1="64" y1="64" x2="82" y2="54"/>
+  </g>
   <g>
-    <circle cx="30" cy="34" r="11" fill="#22c55e"/>
-    <circle cx="98" cy="36" r="9" fill="#38bdf8"/>
-    <circle cx="32" cy="96" r="9" fill="#f59e0b"/>
-    <circle cx="96" cy="94" r="11" fill="#ef4444"/>
-    <circle cx="64" cy="64" r="17" fill="url(#hub)"/>
-    <circle cx="64" cy="64" r="17" fill="none" stroke="#a78bfa" stroke-width="2.5"/>
+    <circle cx="64" cy="42" r="6" fill="url(#node)"/>
+    <circle cx="46" cy="74" r="6" fill="url(#node)"/>
+    <circle cx="82" cy="74" r="6" fill="url(#node)"/>
+
+    <circle cx="82" cy="54" r="15" fill="url(#sparkGlow)"/>
+    <circle cx="82" cy="54" r="6.5" fill="url(#spark)"/>
+
+    <circle cx="64" cy="64" r="11" fill="url(#hub)"/>
+    <circle cx="64" cy="64" r="11" fill="none" stroke="#cdf3ff" stroke-width="2.5" opacity="0.9"/>
   </g>
 </svg>

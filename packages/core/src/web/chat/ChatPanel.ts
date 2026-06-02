@@ -3,10 +3,9 @@ import type { Emitter } from "../Emitter";
 import type { Task, TaskMessage, TaskStatus } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
-import { specDescription } from "../taskView";
+import { fromBehavior, fromClass, specDescription, specName, toClass } from "../taskView";
 import { roleLabel } from "./roleLabel";
 
-const REQUEST_TYPE = "request";
 const REFRESH_MS = 2000;
 const ACTIVITY_MS = 1000;
 const KEY_SEPARATOR = "::";
@@ -58,6 +57,7 @@ export class ChatPanel {
     this.thread.addEventListener("click", (event) => this.onThreadClick(event));
     this.bus.on("auto:changed", () => void this.refresh(true));
     this.bus.on("chat:select", (taskId) => this.select(taskId));
+    this.bus.on("chat:new", (payload) => void this.newConversation(payload.description));
 
     void this.refresh(true);
     setInterval(() => void this.refresh(), REFRESH_MS);
@@ -86,6 +86,24 @@ export class ChatPanel {
     this.editingId = null;
     this.editingMessage = null;
     this.bus.emit("mode:set", "chat");
+    void this.refresh(true);
+  }
+
+  // Start a brand-new conversation seeded from elsewhere (e.g. the method drawer's
+  // "Open in chat"): switch to the Chat tab, enqueue the request, and adopt it as the
+  // newest conversation so the thread opens on it right away.
+  private async newConversation(description: string): Promise<void> {
+    if (!description.trim()) {
+      return;
+    }
+    this.selectedId = null;
+    this.newChatMode = false;
+    this.editingId = null;
+    this.editingMessage = null;
+    this.selectNewest = true;
+    this.bus.emit("mode:set", "chat");
+    await this.api.sendRequest(description);
+    this.bus.emit("toast", t("chat.sent"));
     void this.refresh(true);
   }
 
@@ -286,24 +304,11 @@ export class ChatPanel {
     this.render(requests);
   }
 
-  // Every task that reads as a conversation: a free-form request, or any other task type
-  // Claude has actually talked on (has messages) — e.g. an add-behavior. describe-behavior
-  // is internal and stays hidden. The selected task is always kept so a "View in chat"
-  // jump from Tasks/Changes lands on it even before it has any messages.
+  // Every task is a conversation the moment it exists — a free-form request or one
+  // created from a method (add/edit/move/create) — so it's trackable in Chat right away,
+  // before Claude has said anything. describe-behavior is internal and stays hidden.
   private conversations(all: Task[]): Task[] {
-    const list = all.filter(
-      (task) =>
-        !task.dismissed &&
-        task.type !== "describe-behavior" &&
-        (task.type === REQUEST_TYPE || (task.messages?.length ?? 0) > 0)
-    );
-    if (this.selectedId && !list.some((task) => task.id === this.selectedId)) {
-      const selected = all.find((task) => task.id === this.selectedId && !task.dismissed);
-      if (selected) {
-        list.push(selected);
-      }
-    }
-    return list;
+    return all.filter((task) => !task.dismissed && task.type !== "describe-behavior");
   }
 
   // Keep `selectedId` pointing at a live conversation: adopt the newest after a fresh
@@ -344,8 +349,30 @@ export class ChatPanel {
     this.list.innerHTML = `<button class="conv-new" data-new-chat>＋ ${t("chat.newChat")}</button>${items}`;
   }
 
+  // A one-line label for a conversation. Free-form requests and method tasks that
+  // carry a description show it; structured method tasks without one (move, create
+  // folder) read from their spec so the list never shows a bare "untitled".
+  private conversationTitle(task: Task): string {
+    const description = specDescription(task);
+    if (description) {
+      return description;
+    }
+    switch (task.type) {
+      case "add-behavior":
+        return `＋ ${specName(task)}() ${t("task.in")} ${fromClass(task)}`;
+      case "edit-behavior":
+        return `✎ ${fromBehavior(task)}() ${t("task.in")} ${fromClass(task)}`;
+      case "move-behavior":
+        return `${fromBehavior(task)}() ${fromClass(task)} → ${toClass(task)}`;
+      case "create-folder":
+        return `＋ ${specName(task)}`;
+      default:
+        return t("changes.untitled");
+    }
+  }
+
   private renderListItem(request: Task): string {
-    const title = specDescription(request) || t("changes.untitled");
+    const title = this.conversationTitle(request);
     const active = request.id === this.selectedId ? " active" : "";
     return `<button class="conv-item${active}" data-conv="${request.id}">
       <span class="conv-title">${escapeHtml(title)}</span>
@@ -400,10 +427,11 @@ export class ChatPanel {
 
   private renderThread(request: Task): string {
     const description = specDescription(request);
+    const promptText = request.type === "request" ? description : this.conversationTitle(request);
     const prompt =
       this.editingId === request.id
         ? this.renderEditor(`${request.id}`, description, "data-edit-save")
-        : `<div class="chat-msg chat-user"><b>${t("chat.you")}:</b> ${escapeHtml(description)}${this.editButton(
+        : `<div class="chat-msg chat-user"><b>${t("chat.you")}:</b> ${escapeHtml(promptText)}${this.editButton(
             request,
             "data-edit",
             request.id
@@ -443,10 +471,12 @@ export class ChatPanel {
     )}${edit}</div>`;
   }
 
-  // The ✎ affordance, hidden only while Claude actively holds the task (a re-run mid-
-  // flight would race the running process).
+  // The ✎ affordance. Only free-form `request` tasks can be re-edited (the host's
+  // editRequest/editMessage rewrite a request's prompt and re-run it); a task created
+  // from a method carries a structured spec, not a prompt, so it's tracked and replied
+  // to here but edited through its own form. Also hidden while Claude holds the task.
   private editButton(request: Task, attribute: string, value: string): string {
-    if (request.lock) {
+    if (request.lock || request.type !== "request") {
       return "";
     }
     const title = attribute === "data-edit" ? t("chat.edit") : t("chat.editMessage");

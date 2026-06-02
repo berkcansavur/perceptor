@@ -10,6 +10,7 @@ import { usageBadge } from "../usageBadge";
 import { fromBehavior, fromClass, fromFile, specDescription, specName, specSignature, toClass, toFile } from "../taskView";
 import { roleColorHex } from "../graph/roleColors";
 import { complexityStrip } from "../complexity/complexityStrip";
+import { queryStrip } from "../complexity/queryStrip";
 
 
 type BehaviorTarget = {
@@ -456,8 +457,8 @@ export class ChangesView {
       return;
     }
     try {
-      const report = await this.api.complexity(info.code, info.name);
-      host.innerHTML = complexityStrip(report);
+      const { report, query } = await this.api.complexity(info.code, info.name, info.file);
+      host.innerHTML = complexityStrip(report) + queryStrip(query);
     } catch {
       host.innerHTML = "";
     }

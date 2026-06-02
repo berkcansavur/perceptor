@@ -31,7 +31,7 @@ function copyAssets() {
   fs.mkdirSync(webOut, { recursive: true });
   fs.mkdirSync(wasmOut, { recursive: true });
 
-  const coreDir = path.dirname(require.resolve("repo-visualiser/package.json"));
+  const coreDir = path.dirname(require.resolve("perceptor-core/package.json"));
   const coreWeb = path.join(coreDir, "dist", "web");
   for (const asset of fs.readdirSync(coreWeb)) {
     fs.copyFileSync(path.join(coreWeb, asset), path.join(webOut, asset));
@@ -49,7 +49,28 @@ function copyAssets() {
   }
 
   fs.copyFileSync(require.resolve("web-tree-sitter/tree-sitter.wasm"), path.join(wasmOut, "tree-sitter.wasm"));
-  console.log("assets copied -> dist/web, dist/wasm");
+
+  // The /visualise Claude skill is the engine that processes tasks. Bundling it into the
+  // .vsix lets the extension provision it onto the user's machine at activation, so it
+  // works with zero per-user setup (see provisionSkill in extension.ts).
+  const skillsSrc = path.resolve(__dirname, "..", "..", "skills");
+  const skillsOut = path.join(distDir, "skills");
+  copyDir(skillsSrc, skillsOut);
+
+  console.log("assets copied -> dist/web, dist/wasm, dist/skills");
+}
+
+function copyDir(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const from = path.join(src, entry.name);
+    const to = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDir(from, to);
+    } else {
+      fs.copyFileSync(from, to);
+    }
+  }
 }
 
 async function main() {

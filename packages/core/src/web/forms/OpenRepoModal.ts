@@ -4,7 +4,7 @@ import type { Emitter } from "../Emitter";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
 
-const RECENT_KEY = "repoVisualiserRecent";
+const RECENT_KEY = "perceptorRecent";
 
 // "Open repository" dialog: a navigable folder browser + recent list (VS Code
 // "Open Folder" equivalent).

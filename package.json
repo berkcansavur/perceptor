@@ -1,5 +1,5 @@
 {
-  "name": "repo-visualiser-monorepo",
+  "name": "perceptor-monorepo",
   "version": "0.1.0",
   "private": true,
   "description": "Interactive dependency/behavior map for a code repository — workspaces root.",
@@ -9,11 +9,11 @@
     "packages/extension"
   ],
   "scripts": {
-    "build": "npm run build -w repo-visualiser && npm run compile -w repo-visualiser-vscode",
-    "build:core": "npm run build -w repo-visualiser",
-    "check-types": "npm run build:core && npm run check-types -w repo-visualiser && npm run check-types -w repo-visualiser-vscode",
-    "test": "npm run test -w repo-visualiser && npm run test -w repo-visualiser-vscode",
-    "start": "npm run start -w repo-visualiser",
+    "build": "npm run build -w perceptor-core && npm run compile -w perceptor",
+    "build:core": "npm run build -w perceptor-core",
+    "check-types": "npm run build:core && npm run check-types -w perceptor-core && npm run check-types -w perceptor",
+    "test": "npm run test -w perceptor-core && npm run test -w perceptor",
+    "start": "npm run start -w perceptor-core",
     "package": "bash scripts/pack-extension.sh",
     "install:local": "bash scripts/install-local.sh"
   },

@@ -16,7 +16,7 @@ npm run build
 VERSION="$(node -p "require('$EXT/package.json').version")"
 
 echo "Packaging .vsix…"
-( cd "$EXT" && npx --yes @vscode/vsce package --no-dependencies --out "repo-visualiser-vscode-$VERSION.vsix" )
+( cd "$EXT" && npx --yes @vscode/vsce package --no-dependencies --out "perceptor-$VERSION.vsix" )
 
-echo "Done -> packages/extension/repo-visualiser-vscode-$VERSION.vsix"
-echo "Install with: code --install-extension packages/extension/repo-visualiser-vscode-$VERSION.vsix"
+echo "Done -> packages/extension/perceptor-$VERSION.vsix"
+echo "Install with: code --install-extension packages/extension/perceptor-$VERSION.vsix"

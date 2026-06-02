@@ -1,8 +1,10 @@
 import * as fs from "fs";
-import * as path from "path";
+import { pathIsIgnored } from "../../core";
 
-// Watches a repo (recursively, debounced) and fires onChange for relevant edits.
-// Ignores node_modules/.git/.visualise so our own graph writes don't loop.
+// Watches a repo (recursively, debounced) and fires onChange for relevant edits. It shares
+// the analyzer's ignore policy (node_modules, build output, dot-dirs, .visualise, …) so it
+// only re-analyzes on changes that can actually alter the graph — otherwise routine churn
+// in dist/ or .next/ would loop the UI through endless reload/refresh cycles.
 export class FileWatcher {
   private watcher: fs.FSWatcher | null = null;
   private timer: NodeJS.Timeout | null = null;
@@ -30,13 +32,11 @@ export class FileWatcher {
   }
 
   private shouldIgnore(filename: string | Buffer | null): boolean {
-    const name = filename ? filename.toString() : "";
-    return (
-      name.includes("node_modules") ||
-      name.includes(`.git${path.sep}`) ||
-      name.includes(".git/") ||
-      name.includes(".visualise")
-    );
+    // No name means we can't tell what changed — re-analyze to stay correct.
+    if (!filename) {
+      return false;
+    }
+    return pathIsIgnored(filename.toString());
   }
 
   close(): void {

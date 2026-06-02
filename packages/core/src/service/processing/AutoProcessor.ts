@@ -234,10 +234,10 @@ export class AutoProcessor {
       this.activities.set(task.id, { taskId: task.id, text, at: new Date().toISOString() });
     });
     run.onUsage((usage) => this.recordUsage(task.id, usage));
-    run.onExit((errorMessage) => this.onRunExit(task.id, session, errorMessage));
+    run.onExit((errorMessage) => this.onRunExit(task.id, errorMessage));
   }
 
-  private onRunExit(taskId: string, session: RunSession, errorMessage: string | null): void {
+  private onRunExit(taskId: string, errorMessage: string | null): void {
     this.activeRuns.delete(taskId);
     this.activities.delete(taskId);
     const stopped = this.stopRequestedIds.delete(taskId);
@@ -249,9 +249,12 @@ export class AutoProcessor {
         this.summaries.write(file, behavior, text);
       }
     }
-    // A resumed run that failed without producing a result may mean the session is
-    // gone; drop it so the next attempt cold-starts (the task still carries its diff).
-    if (errorMessage && session.resume && !runResult) {
+    // A run that failed without producing a result means its session was never usefully
+    // established: a resumed one is gone, or a brand-new one died before Claude created
+    // it (e.g. the binary couldn't be spawned). Either way drop the id so the next
+    // attempt cold-starts instead of resuming a session that doesn't exist — the task
+    // still carries its diff.
+    if (errorMessage && !runResult) {
       this.store.mutate(taskId, (item) => {
         item.sessionId = null;
       });

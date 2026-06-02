@@ -7,10 +7,13 @@ import { EdgeBuilder } from "./EdgeBuilder";
 import { FileNodeRegistry } from "./FileNodeRegistry";
 import { GraphBuilder } from "./GraphBuilder";
 import { AnalyzerAssets, Graph } from "./types";
+import { ensureVisualiseIgnored } from "./ensureVisualiseIgnored";
 
 export * from "./types";
 export { GraphBuilder } from "./GraphBuilder";
 export { LanguageRegistry } from "./LanguageRegistry";
+export { ensureVisualiseIgnored } from "./ensureVisualiseIgnored";
+export { IGNORED_DIRECTORIES, isIgnoredSegment, pathIsIgnored } from "./FileWalker";
 
 // Assets are injected (never resolved from node_modules here) so this module carries no
 // runtime path assumption — a bundled host passes the location of its shipped .wasm files.
@@ -40,6 +43,7 @@ export async function analyzeToFile(
   const graph = await analyze(rootDirectory, assets);
   const target = outputPath(rootDirectory);
   fs.mkdirSync(path.dirname(target), { recursive: true });
+  ensureVisualiseIgnored(rootDirectory);
   fs.writeFileSync(target, JSON.stringify(graph, null, 2));
   return { graph, outputPath: target };
 }

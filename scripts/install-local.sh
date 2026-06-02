@@ -16,10 +16,10 @@ fi
 bash "$ROOT/scripts/pack-extension.sh"
 
 VERSION="$(node -p "require('$EXT/package.json').version")"
-VSIX="$EXT/repo-visualiser-vscode-$VERSION.vsix"
+VSIX="$EXT/perceptor-$VERSION.vsix"
 
 echo "Installing $VSIX…"
 code --install-extension "$VSIX" --force
 
-echo "Done. Reload VS Code, then click the 'Repo Visualiser' status-bar item (or run"
-echo "'Repo Visualiser: Open' from the command palette) in any folder you open."
+echo "Done. Reload VS Code, then click the 'Perceptor' status-bar item (or run"
+echo "'Perceptor: Open' from the command palette) in any folder you open."

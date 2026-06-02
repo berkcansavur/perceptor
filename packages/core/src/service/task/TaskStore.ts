@@ -3,6 +3,7 @@ import * as path from "path";
 import { EnqueuePayload, RunResult, Task, TaskArtifact, TaskImpact, TaskLifecycle, TaskMessage, TaskMeta, UpdatePayload } from "../types";
 import { coerceKind } from "./taskCoercion";
 import { RequestNotFoundException, TaskNotFoundException } from "../exception";
+import { ensureVisualiseIgnored } from "../../core";
 
 // Reads/writes the queue the UI and Claude share (.visualise/pending-actions.json).
 export class TaskStore {
@@ -80,6 +81,7 @@ export class TaskStore {
   private write(tasks: readonly Task[]): void {
     const file = this.file();
     fs.mkdirSync(path.dirname(file), { recursive: true });
+    ensureVisualiseIgnored(this.rootProvider());
     const temporaryFile = `${file}.${process.pid}.tmp`;
     fs.writeFileSync(temporaryFile, JSON.stringify(tasks, null, 2));
     fs.renameSync(temporaryFile, file);

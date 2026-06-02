@@ -788,7 +788,35 @@ button.primary {
 }
 
 #behavior-drawer {
+  /* 460px is the default *and* the minimum: the drawer can only be dragged wider (leftward),
+     never narrower than the size it opens at. */
   width: 460px;
+  min-width: 460px;
+  max-width: 95vw;
+}
+
+/* Left-edge grab handle: the drawer is anchored right, so dragging this leftward grows its
+   width without disturbing anything else on screen. */
+#behavior-drawer-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 3;
+}
+
+#behavior-drawer-resizer:hover,
+body.behavior-resizing #behavior-drawer-resizer {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+/* Kill text selection across the page while a drag is in progress. */
+body.behavior-resizing {
+  user-select: none;
+  cursor: ew-resize;
 }
 
 /* Tasks opens flush-right; an open behavior drawer slides left so they sit
@@ -826,18 +854,25 @@ body.tasks-open #behavior-drawer {
   color: #75beff;
   white-space: pre-wrap;
   word-break: break-word;
+  max-height: 25vh;
+  overflow-y: auto;
+}
+
+/* One scroll container for everything between the fixed header and footer. Sections
+   flow naturally inside it, so a tall Complexity strip can never crush a neighbour into
+   overlap — the whole body just scrolls. */
+.behavior-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .behavior-drawer-section {
   padding: 14px 14px 0;
-  min-height: 0;
 }
 
 .behavior-drawer-section:last-of-type {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  padding-bottom: 14px;
 }
 
 .behavior-drawer-label {
@@ -852,6 +887,9 @@ body.tasks-open #behavior-drawer {
   font-size: 13px;
   line-height: 1.5;
   margin-bottom: 8px;
+  /* Claude's explanation may span a few sentences or terse bullet lines — keep its line
+     breaks while still wrapping long lines. */
+  white-space: pre-line;
 }
 
 #behavior-explain {
@@ -869,9 +907,8 @@ body.tasks-open #behavior-drawer {
 }
 
 #behavior-drawer-code {
-  flex: 1;
-  overflow: auto;
   margin: 0;
+  overflow-x: auto;
 }
 
 .behavior-drawer-footer {
@@ -1852,40 +1889,99 @@ body.tasks-open #behavior-drawer {
   color: #c98a8a;
 }
 
-/* Complexity metrics strip (Folder explain + Changes detail). */
+/* Complexity metrics strip (Folder explain + Changes detail).
+   Manager-first: a colour-coded risk badge + a plain-language Big-O reading,
+   then the raw numbers as hover-explained chips, then an honest time band. */
 .cx-strip {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
-  align-items: center;
+  /* Risk colour, themed per band below, drives the badge + the left rule. */
+  --cx-risk: var(--muted);
+  border-left: 3px solid var(--cx-risk);
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--panel-2);
 }
 
-.cx-chip {
-  font-family: "SF Mono", ui-monospace, Menlo, monospace;
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  color: var(--text);
+.cx-risk--low {
+  --cx-risk: #6a9955;
+}
+
+.cx-risk--moderate {
+  --cx-risk: #d7ba7d;
+}
+
+.cx-risk--risky {
+  --cx-risk: #d7a85f;
+}
+
+.cx-risk--high {
+  --cx-risk: #c98a8a;
+}
+
+.cx-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.cx-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #1a1a1a;
+  background: var(--cx-risk);
   white-space: nowrap;
 }
 
-.cx-chip.cx-bigo {
-  font-weight: 700;
-  color: var(--accent);
-  border-color: var(--accent);
+.cx-bigo {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
 }
 
-.cx-chip.cx-warn {
-  color: #d7a85f;
-  border-color: #d7a85f;
-}
-
-.cx-scale {
-  margin-top: 6px;
+.cx-bigo-notation {
   font-family: "SF Mono", ui-monospace, Menlo, monospace;
-  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.cx-explain {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2, var(--text));
+}
+
+.cx-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.cx-num {
+  white-space: nowrap;
+  cursor: help;
+}
+
+.cx-num strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.cx-sep {
+  color: var(--border);
+}
+
+.cx-proj {
+  font-size: 11.5px;
   color: var(--text);
 }
 
@@ -1896,6 +1992,456 @@ body.tasks-open #behavior-drawer {
 .cx-unavailable {
   font-size: 11px;
   color: var(--muted);
+}
+
+/* Data-access risk strip — sits under the complexity strip, shares the cx-risk-- colours.
+   A risk badge + a plain-language list of detected query/ORM anti-patterns. */
+.qx-strip {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  --cx-risk: var(--muted);
+  border-left: 3px solid var(--cx-risk);
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.qx-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.qx-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.qx-findings {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qx-finding {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-2, var(--text));
+}
+
+.qx-finding.qx-sev--high::marker {
+  color: var(--cx-risk);
+}
+
+/* Run-flow storyboard — the source-derived call story the play button reveals step by
+   step. Playback is driven in JS by FlowPlayer (so it can pause/resume and change speed
+   live); see the .fx-armed / .fx-revealed / .fx-active rules further down. Steps sit fully
+   visible by default (so the panel reads even without playing); pressing Play arms the
+   strip and reveals the steps one at a time. */
+.fx-strip {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 3px solid var(--accent);
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.fx-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fx-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fx-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fx-speed {
+  font-size: 10.5px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fx-play,
+.fx-btn {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.fx-play:hover,
+.fx-btn:hover {
+  border-color: var(--accent);
+}
+
+.fx-play.fx-playing {
+  background: var(--accent);
+  color: #0b0e14;
+  border-color: var(--accent);
+}
+
+/* Payload simulator: a self-contained block above the storyboard with editable fields for the
+   values the branches hinge on. Kept visually separate (own background + border) so it never
+   overlaps the animated steps below it. */
+.fx-sim {
+  margin: 2px 0 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Fields ⇄ Raw JSON switch — only the active pane shows, so a payload is given one way at a
+   time. */
+.fx-sim-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.fx-tab {
+  font-size: 10.5px;
+  padding: 3px 10px;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.fx-tab:hover {
+  color: var(--text);
+}
+
+.fx-tab--active {
+  color: var(--accent);
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+
+.fx-sim-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fx-json {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  resize: vertical;
+}
+
+.fx-json:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.fx-sim-error {
+  font-size: 10.5px;
+  color: var(--danger, #f48771);
+}
+
+.fx-sim-hint {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.fx-sim-sub {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.fx-sim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px 10px;
+}
+
+.fx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fx-field-name {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--text-2, var(--text));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-field-input {
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  min-width: 0;
+}
+
+.fx-field-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.fx-stub-row {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fx-stub-row .fx-stub-kind {
+  flex: 0 0 auto;
+}
+
+.fx-stub-row .fx-stub-value {
+  flex: 1 1 auto;
+}
+
+.fx-sim-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.fx-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* The vertical thread the dots sit on. */
+  border-left: 1px solid var(--border);
+  padding-left: 0;
+}
+
+.fx-step {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  /* Nesting depth (set inline as --fx-depth) indents the row so branch arms sit under their
+     `if`/`else`. The dot tracks the same indent a few px to its left. The 26px base clears
+     the dot (which ends ~17px in) plus the `.fx-line` -6px margin, so text never overlaps it. */
+  padding-left: calc(26px + var(--fx-depth, 0) * 18px);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-2, var(--text));
+}
+
+/* A faint vertical guide just left of any nested row; consecutive arm rows share a depth so
+   the segments join into a continuous rail showing what belongs to the branch above. */
+.fx-step[data-fx-anc]::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--fx-depth, 0) * 18px - 4px);
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+/* The text column must be allowed to shrink and wrap — long argument lists otherwise
+   overflow the fixed-width panel and get clipped. */
+.fx-line {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding: 1px 6px;
+  margin: -1px -6px;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.fx-dot {
+  position: absolute;
+  left: calc(var(--fx-depth, 0) * 18px + 10px);
+  top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.fx-step--input .fx-dot {
+  background: var(--accent);
+}
+
+.fx-step--return .fx-dot {
+  background: #6a9955;
+}
+
+.fx-step--throw .fx-dot {
+  background: var(--cx-risk, #d16969);
+}
+
+/* Branch markers: the `if` carries a hollow accent ring, the `else` a hollow muted ring, so
+   control rows read differently from the calls nested beneath them. */
+.fx-step--branch .fx-dot {
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.fx-step--else .fx-dot {
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 2px var(--muted);
+}
+
+.fx-cond {
+  color: #d7ba7d;
+}
+
+.fx-throw {
+  color: var(--cx-risk, #d16969);
+}
+
+.fx-step--branch .fx-verb,
+.fx-step--else .fx-verb {
+  color: #d7ba7d;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* Simulation: a row on a path the current payload does not take is dimmed and struck; the
+   `if` row that decided it shows whether it was taken or skipped. */
+.fx-strip.fx-simulated .fx-step.fx-skip {
+  opacity: 0.32;
+}
+
+.fx-strip.fx-simulated .fx-step.fx-skip .fx-line {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+
+.fx-step--branch.fx-taken > .fx-line::after {
+  content: " ✓ " attr(data-fx-verdict);
+  color: #6a9955;
+  font-size: 10px;
+}
+
+.fx-step--branch.fx-untaken > .fx-line::after {
+  content: " ✗ " attr(data-fx-verdict);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.fx-verb {
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.fx-line code {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px;
+}
+
+.fx-recv {
+  color: var(--muted);
+}
+
+.fx-callee {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.fx-arg {
+  color: var(--text);
+}
+
+.fx-capture {
+  color: #6a9955;
+  font-weight: 600;
+}
+
+.fx-into {
+  color: var(--muted);
+}
+
+.fx-return {
+  color: var(--text);
+}
+
+.fx-note {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* JS-driven playback (FlowPlayer). Steps read fully visible by default; pressing Play
+   "arms" the strip — every step hides — then FlowPlayer adds .fx-revealed one at a time at
+   the chosen cadence, so the reveal can pause and resume from where it stopped. */
+.fx-strip.fx-armed .fx-step:not(.fx-skip) {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.fx-strip.fx-armed .fx-step:not(.fx-skip).fx-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* The step currently being narrated — a subtle accent tint so the eye lands on it. */
+.fx-step.fx-active .fx-line {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.fx-step.fx-active .fx-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-strip.fx-armed .fx-step {
+    transform: none;
+    transition: opacity 0.35s ease;
+  }
 }
 
 /* Before / After / Current panes — separated code blocks, never an interleaved diff. */
