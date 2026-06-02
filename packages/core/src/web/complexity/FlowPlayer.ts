@@ -1,5 +1,4 @@
 import { qsa } from "../dom";
-import { t } from "../i18n";
 
 // Per-step dwell time for each speed. Default is "normal" — a comfortable follow-along pace
 // that's neither sluggish nor a skim.
@@ -17,6 +16,10 @@ const SPEED_MS: Record<Speed, number> = {
 // strip. Steps are fully visible by default (the panel reads without playing); pressing
 // Play "arms" the strip — hides every step — then reveals them one at a time.
 export class FlowPlayer {
+  // Hook the FlowSimulator installs when a method has an editable payload: Run re-simulates the
+  // taken path (then plays it). Left null for methods with no payload, where Run falls back to
+  // plain playback. Clear needs no hook — the player strips the simulation styling itself.
+  onRun: (() => void) | null = null;
   private steps: HTMLElement[] = [];
   private index = 0; // the next step to reveal (0…steps.length)
   // Index of the step after which playback halts because the method has returned/thrown there
@@ -32,6 +35,9 @@ export class FlowPlayer {
   attach(root: HTMLElement): void {
     this.stop();
     this.root = root;
+    // Drop the run hook from the previous method; the FlowSimulator reinstalls it if this one
+    // has a payload (it attaches right after us).
+    this.onRun = null;
     this.bind(root);
     this.resync();
   }
@@ -49,7 +55,6 @@ export class FlowPlayer {
     this.stopAt = this.computeStop();
     this.root?.classList.remove("fx-armed");
     this.steps.forEach((step) => step.classList.remove("fx-active"));
-    this.syncControls();
   }
 
   // The index at which a `return`/`throw` ends the run. Once a payload has been simulated the
@@ -85,7 +90,8 @@ export class FlowPlayer {
   }
 
   private bind(root: HTMLElement): void {
-    root.querySelector("[data-fx-toggle]")?.addEventListener("click", () => this.toggle());
+    root.querySelector("[data-fx-run]")?.addEventListener("click", () => this.runClicked());
+    root.querySelector("[data-fx-clear]")?.addEventListener("click", () => this.clearClicked());
     root.querySelector("[data-fx-replay]")?.addEventListener("click", () => this.replay());
     const speed = root.querySelector<HTMLSelectElement>("[data-fx-speed]");
     speed?.addEventListener("change", () => {
@@ -96,12 +102,28 @@ export class FlowPlayer {
     });
   }
 
-  private toggle(): void {
-    if (this.playing) {
-      this.pause();
+  // Run: re-simulate the taken path when a payload is wired (the simulator's hook ends by
+  // calling start, so playback follows), else just play the static steps from the top.
+  private runClicked(): void {
+    if (this.onRun) {
+      this.onRun();
     } else {
-      this.play();
+      this.replay();
     }
+  }
+
+  // Clear: strip any simulation styling the FlowSimulator applied (taken/untaken/skipped rows
+  // and their verdict labels), then reset the reveal. Self-contained so it always clears the
+  // simulated path, whether or not a payload is wired.
+  private clearClicked(): void {
+    if (this.root) {
+      for (const row of qsa<HTMLElement>(this.root, ".fx-step")) {
+        row.classList.remove("fx-skip", "fx-taken", "fx-untaken");
+        row.querySelector<HTMLElement>(".fx-line")?.removeAttribute("data-fx-verdict");
+      }
+      this.root.classList.remove("fx-simulated");
+    }
+    this.resync();
   }
 
   private play(): void {
@@ -123,13 +145,6 @@ export class FlowPlayer {
       return;
     }
     this.schedule();
-    this.syncControls();
-  }
-
-  private pause(): void {
-    this.clearTimer();
-    this.playing = false;
-    this.syncControls();
   }
 
   private replay(): void {
@@ -171,7 +186,6 @@ export class FlowPlayer {
     this.clearTimer();
     this.playing = false;
     this.steps.forEach((step) => step.classList.remove("fx-active"));
-    this.syncControls();
   }
 
   private hideAll(): void {
@@ -183,18 +197,6 @@ export class FlowPlayer {
       clearInterval(this.timer);
       this.timer = null;
     }
-  }
-
-  // Reflect state on the play/pause button: Pause while running, Resume when paused
-  // mid-way, Play otherwise (start or replay-after-finish).
-  private syncControls(): void {
-    const toggle = this.root?.querySelector<HTMLElement>("[data-fx-toggle]");
-    if (!toggle) {
-      return;
-    }
-    const midway = this.index > 0 && this.index < this.steps.length;
-    toggle.textContent = this.playing ? t("fx.pause") : midway ? t("fx.resume") : t("fx.play");
-    toggle.classList.toggle("fx-playing", this.playing);
   }
 
   private normaliseSpeed(value: string): Speed {

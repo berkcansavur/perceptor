@@ -18,4 +18,7 @@ export class AppState {
   userAdjusted = false;
   hostRoot: string | null = null;
   searchQuery = "";
+  // Node kinds the folder view currently hides (toggled off via the kind-filter chips).
+  // Empty means everything is shown.
+  hiddenKinds = new Set<string>();
 }

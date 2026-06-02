@@ -401,4 +401,36 @@ describe("AutoProcessor", () => {
 
     expect(runner.runs).toHaveLength(0);
   });
+
+  it("restores the persisted opt-in so a reopened processor stays enabled", () => {
+    // The user opted in; the choice is written to disk.
+    processor.setEnabled(true);
+    expect(fs.existsSync(path.join(root, ".visualise", "auto.json"))).toBe(true);
+
+    // A brand-new processor (the reopened window) adopts the persisted opt-in and processes.
+    const reopened = new AutoProcessor(() => root, store, runner);
+    expect(reopened.status().enabled).toBe(false); // not yet restored
+    reopened.restore();
+    expect(reopened.status().enabled).toBe(true);
+
+    store.enqueue(blankTask());
+    reopened.notify();
+    vi.advanceTimersByTime(DEBOUNCE_MS);
+    expect(runner.runs).toHaveLength(1);
+  });
+
+  it("restore() leaves a never-enabled processor off", () => {
+    const reopened = new AutoProcessor(() => root, store, runner);
+    reopened.restore();
+    expect(reopened.status().enabled).toBe(false);
+  });
+
+  it("persists the opt-out too, so a reopened processor stays off", () => {
+    processor.setEnabled(true);
+    processor.setEnabled(false);
+
+    const reopened = new AutoProcessor(() => root, store, runner);
+    reopened.restore();
+    expect(reopened.status().enabled).toBe(false);
+  });
 });

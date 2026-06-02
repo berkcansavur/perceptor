@@ -98,6 +98,10 @@ export class App {
     if (locale && locale !== getCurrentLang()) {
       setLang(locale);
     }
+    // Persist the effective locale so .visualise/locale.json always exists. The skill reads
+    // that file directly and, when it's missing, falls back to guessing the language — which
+    // is how an English UI ended up with Turkish Claude output. Writing it pins the choice.
+    void this.api.setLocale(getCurrentLang());
   }
 
   private wireBus(): void {

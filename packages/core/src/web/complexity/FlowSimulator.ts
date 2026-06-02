@@ -47,6 +47,10 @@ export class FlowSimulator {
     const head = root.querySelector(".fx-head");
     head?.insertAdjacentElement("afterend", this.panel);
     this.bind();
+    // Drive the head's Run button: it simulates the taken path and plays it. Clear needs no hook
+    // — the player strips the simulation itself. Methods with no payload don't reach here, so Run
+    // falls back to plain playback.
+    player.onRun = () => this.run();
   }
 
   // Drop the panel and any simulation styling from the previous method.
@@ -55,7 +59,7 @@ export class FlowSimulator {
     this.panel = null;
   }
 
-  // ── Run / Clear ──────────────────────────────────────────────────────────────────────
+  // ── Run ──────────────────────────────────────────────────────────────────────────────
 
   private run(): void {
     if (!this.root || !this.player || !this.panel) {
@@ -70,19 +74,6 @@ export class FlowSimulator {
     this.root.classList.add("fx-simulated");
     this.player.resync(); // re-scope playback to the surviving (taken) rows
     this.player.start();
-  }
-
-  private clear(): void {
-    if (!this.root || !this.player) {
-      return;
-    }
-    for (const row of qsa<HTMLElement>(this.root, ".fx-step")) {
-      row.classList.remove("fx-skip", "fx-taken", "fx-untaken");
-      const line = row.querySelector<HTMLElement>(".fx-line");
-      line?.removeAttribute("data-fx-verdict");
-    }
-    this.root.classList.remove("fx-simulated");
-    this.player.resync();
   }
 
   // Evaluate every branch's condition against the payload, keyed by the branch id the strip
@@ -340,11 +331,7 @@ export class FlowSimulator {
     panel.innerHTML =
       this.tabsMarkup() +
       `<div class="fx-sim-pane" data-fx-pane="fields">${this.fieldsMarkup(inputRefs, stubRefs)}</div>` +
-      `<div class="fx-sim-pane hidden" data-fx-pane="json">${this.jsonMarkup(inputRefs, stubRefs)}</div>` +
-      `<div class="fx-sim-actions">` +
-      `<button type="button" class="fx-play" data-fx-run>${this.escape(t("fx.run"))}</button>` +
-      `<button type="button" class="fx-btn" data-fx-clear>${this.escape(t("fx.clear"))}</button>` +
-      `</div>`;
+      `<div class="fx-sim-pane hidden" data-fx-pane="json">${this.jsonMarkup(inputRefs, stubRefs)}</div>`;
     return panel;
   }
 
@@ -396,8 +383,6 @@ export class FlowSimulator {
   }
 
   private bind(): void {
-    this.panel?.querySelector("[data-fx-run]")?.addEventListener("click", () => this.run());
-    this.panel?.querySelector("[data-fx-clear]")?.addEventListener("click", () => this.clear());
     for (const tab of qsa<HTMLElement>(this.panel!, "[data-fx-tab]")) {
       tab.addEventListener("click", () => this.selectTab((tab.dataset.fxTab as "fields" | "json") ?? "fields"));
     }

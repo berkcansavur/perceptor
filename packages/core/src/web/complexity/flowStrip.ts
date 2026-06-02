@@ -55,8 +55,10 @@ function renderSteps(steps: FlowStep[], depth: number, ancestors: string[], ctx:
   return out;
 }
 
-// Title + playback controls: a speed select and play/pause + replay buttons. The FlowPlayer
-// binds behaviour off the data-fx-* hooks after render.
+// Title + controls: a speed select plus Run / Clear / Replay buttons. Run reads the payload
+// (when the simulator is wired) and lights up the path it takes, then animates it; without a
+// payload it simply plays the static steps. The FlowPlayer/FlowSimulator bind behaviour off
+// the data-fx-* hooks after render.
 function head(): string {
   const speed =
     `<select class="fx-speed" data-fx-speed title="${escape(t("fx.speed"))}" aria-label="${escape(t("fx.speed"))}">` +
@@ -65,7 +67,8 @@ function head(): string {
     `<option value="fast">${escape(t("fx.speedFast"))}</option>` +
     `</select>`;
   const buttons =
-    `<button type="button" class="fx-play" data-fx-toggle>${escape(t("fx.play"))}</button>` +
+    `<button type="button" class="fx-play" data-fx-run>${escape(t("fx.run"))}</button>` +
+    `<button type="button" class="fx-btn" data-fx-clear>${escape(t("fx.clear"))}</button>` +
     `<button type="button" class="fx-btn" data-fx-replay>${escape(t("fx.replay"))}</button>`;
   return (
     `<div class="fx-head">` +

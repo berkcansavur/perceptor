@@ -21,6 +21,7 @@ export type ClassKind =
   | "struct"
   | "type"
   | "const"
+  | "function" // a named arrow/function-expression bound to a top-level const (carries one behavior)
   | "annotation"
   | "delegate"
   // File-level nodes so every file appears in the map, not just classes:

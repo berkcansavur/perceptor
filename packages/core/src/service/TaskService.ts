@@ -15,6 +15,11 @@ export class TaskService {
     this.autoProcessor = new AutoProcessor(rootProvider, this.tasks);
   }
 
+  // Re-adopt the persisted auto-processing opt-in (called once at startup).
+  restoreAuto(): void {
+    this.autoProcessor.restore();
+  }
+
   listTasks(): { tasks: Task[] } {
     return { tasks: this.tasks.read() };
   }

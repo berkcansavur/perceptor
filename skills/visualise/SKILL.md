@@ -42,7 +42,7 @@ This section is for **developing** the extension; end users just install the `.v
 and click the **Perceptor** status-bar item (or run "Perceptor: Open").
 
 1. Ensure built: `cd $VISUALISER_HOME && npm install && npm run build` (if needed).
-2. Tell the user (Turkish) to open the map in VS Code:
+2. Tell the user (in the §"Output language" locale) to open the map in VS Code:
    - Dev: open `$VISUALISER_HOME` in VS Code → **F5** → in the Extension Development
      Host: `Cmd+Shift+P` → **"Perceptor: Open"**.
    - Installed: `npm run package` → `code --install-extension
@@ -416,8 +416,8 @@ repo in a non-compiling state; if you can't fix it, revert and mark `error`.
 
 ## 4. Report
 
-Summarize to the user (Turkish): how many tasks proposed / applied / errored, and
-what needs their review. Never auto-commit; leave changes local.
+Summarize to the user (in the §"Output language" locale): how many tasks proposed /
+applied / errored, and what needs their review. Never auto-commit; leave changes local.
 
 ## Auto-processor contract (when invoked headlessly)
 

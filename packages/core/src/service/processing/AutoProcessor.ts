@@ -3,6 +3,7 @@ import { AutoActivity, AutoStatus, Task } from "../types";
 import { TaskStore } from "../task/TaskStore";
 import { ResultStore } from "../task/ResultStore";
 import { BehaviorSummaryStore } from "../persistence/BehaviorSummaryStore";
+import { AutoEnableStore } from "../persistence/AutoEnableStore";
 import { AutoProcessRun, AutoProcessRunner, RunSession } from "./AutoProcessRunner";
 import { StreamUsage } from "./streamActivity";
 import { footprintsOverlap, taskFootprint } from "../task/taskFootprint";
@@ -54,6 +55,7 @@ export class AutoProcessor {
   private readonly stopRequestedIds = new Set<string>();
   private readonly results: ResultStore;
   private readonly summaries: BehaviorSummaryStore;
+  private readonly enabledStore: AutoEnableStore;
   private stoppedMessage = "Stopped.";
 
   constructor(
@@ -63,6 +65,18 @@ export class AutoProcessor {
   ) {
     this.results = new ResultStore(getRoot);
     this.summaries = new BehaviorSummaryStore(getRoot);
+    this.enabledStore = new AutoEnableStore(getRoot);
+  }
+
+  // Re-adopt the persisted opt-in on startup (the editor reloaded / the panel reopened),
+  // so a user who enabled auto-processing earlier stays enabled instead of silently
+  // reverting to OFF. No-op when it was never enabled for this repo.
+  restore(): void {
+    if (this.enabledStore.read() && this.runner.available && !this.enabled) {
+      this.enabled = true;
+      this.startWatchdog();
+      this.notify();
+    }
   }
 
   status(): AutoStatus {
@@ -100,6 +114,7 @@ export class AutoProcessor {
       return this.status();
     }
     this.enabled = next;
+    this.enabledStore.save(next); // survive a reload — the opt-in is the whole point
     if (this.enabled) {
       this.startWatchdog();
       this.notify();

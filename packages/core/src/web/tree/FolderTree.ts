@@ -9,6 +9,7 @@ const BEHAVIORLESS_KINDS: ReadonlySet<string> = new Set([
   "enum",
   "type",
   "const",
+  "function",
   "annotation",
   "delegate",
   "module",
@@ -42,18 +43,39 @@ export class FolderTree {
       <button class="row-btn new-file-btn">${t("create.fileBtn")}</button>
       <button class="row-btn new-folder-btn">${t("create.folderBtn")}</button>
     </div>`;
-    this.tree.innerHTML = `<div class="tree-root">${rootActions}${this.renderFolderNode(this.buildTree())}</div>`;
+    this.tree.innerHTML = `<div class="tree-root">${rootActions}${this.renderKindFilter()}${this.renderFolderNode(this.buildTree())}</div>`;
+  }
+
+  // A toggle chip per kind present in the graph. Clicking one hides every node of that kind
+  // from the tree, so the const/file/config noise can be dialled down to focus on classes.
+  private renderKindFilter(): string {
+    const kinds = [...new Set(this.state.nodes.map((node) => node.kind))].sort();
+    if (kinds.length <= 1) {
+      return ""; // nothing to filter when the repo has a single kind
+    }
+    const chips = kinds
+      .map((kind) => {
+        const off = this.state.hiddenKinds.has(kind);
+        return `<button type="button" class="kind-chip${off ? " off" : ""}" data-kind-toggle="${escapeHtml(kind)}">
+          <span class="kind-badge kind-${kind}">${escapeHtml(kind)}</span>
+        </button>`;
+      })
+      .join("");
+    return `<div class="tree-kind-filter"><span class="tree-kind-filter-label">${t("tree.kindFilter")}</span>${chips}</div>`;
   }
 
   applySearch(): void {
     const query = this.state.searchQuery;
+    const hidden = this.state.hiddenKinds;
+    const filtering = Boolean(query) || hidden.size > 0;
     for (const classRow of qsa<HTMLElement>(this.tree, ".tree-class")) {
-      const matches = !query || (classRow.dataset.name ?? "").includes(query);
-      classRow.classList.toggle("hidden", Boolean(query) && !matches);
+      const nameMatches = !query || (classRow.dataset.name ?? "").includes(query);
+      const kindShown = !hidden.has(classRow.dataset.kind ?? "");
+      classRow.classList.toggle("hidden", !kindShown || (Boolean(query) && !nameMatches));
     }
     for (const folder of qsa<HTMLElement>(this.tree, ".tree-folder")) {
       const hasVisible = folder.querySelector(".tree-class:not(.hidden)");
-      folder.classList.toggle("hidden", Boolean(query) && !hasVisible);
+      folder.classList.toggle("hidden", filtering && !hasVisible);
     }
   }
 
@@ -194,6 +216,19 @@ export class FolderTree {
 
   private setupClicks(): void {
     this.tree.addEventListener("click", (event) => {
+      const kindChip = closestEl<HTMLElement>(event.target, ".kind-chip");
+      if (kindChip) {
+        event.stopPropagation();
+        const kind = kindChip.dataset.kindToggle ?? "";
+        if (this.state.hiddenKinds.has(kind)) {
+          this.state.hiddenKinds.delete(kind);
+        } else {
+          this.state.hiddenKinds.add(kind);
+        }
+        kindChip.classList.toggle("off", this.state.hiddenKinds.has(kind));
+        this.applySearch();
+        return;
+      }
       const vscodeButton = closestEl(event.target, ".vscode-btn");
       if (vscodeButton) {
         event.stopPropagation();

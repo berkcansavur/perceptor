@@ -7,9 +7,13 @@ const ONBOARDED_KEY = "perceptorOnboarded";
 // First-run welcome. Auto-processing (your own local Claude carrying out the changes you
 // describe) is the single feature that spends Claude tokens, so we ask the user to opt in
 // once instead of enabling it silently. Shown only when it's actually available on this
-// host and the user hasn't answered before; the answer is remembered so we never nag.
+// host and the user hasn't answered before; the answer is remembered per repository so each
+// fresh project asks once but the same one never nags again.
 export class OnboardingModal {
   private readonly modal = byId("onboarding-modal");
+  // Resolved to a repo-scoped key once we know the open root, so the opt-in is remembered per
+  // project rather than globally (webview localStorage is shared across every workspace).
+  private storageKey = ONBOARDED_KEY;
 
   constructor(
     private readonly api: Api,
@@ -22,6 +26,7 @@ export class OnboardingModal {
   }
 
   async maybeShow(): Promise<void> {
+    await this.scopeToRepo();
     if (this.answered()) {
       return;
     }
@@ -55,13 +60,26 @@ export class OnboardingModal {
     this.modal.classList.add("hidden");
   }
 
+  // Pin the remembered-answer key to the open repo. Falls back to the global key when meta
+  // can't be read, so a transient failure can't make us forget across every project at once.
+  private async scopeToRepo(): Promise<void> {
+    try {
+      const root = (await this.api.meta()).root;
+      if (root) {
+        this.storageKey = `${ONBOARDED_KEY}:${root}`;
+      }
+    } catch {
+      // keep the global fallback key
+    }
+  }
+
   private answered(): boolean {
-    return typeof localStorage !== "undefined" && localStorage.getItem(ONBOARDED_KEY) === "1";
+    return typeof localStorage !== "undefined" && localStorage.getItem(this.storageKey) === "1";
   }
 
   private remember(): void {
     if (typeof localStorage !== "undefined") {
-      localStorage.setItem(ONBOARDED_KEY, "1");
+      localStorage.setItem(this.storageKey, "1");
     }
   }
 }

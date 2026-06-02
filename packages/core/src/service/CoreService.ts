@@ -93,6 +93,7 @@ export class CoreService {
 
   async init(): Promise<void> {
     await this.workspace.init();
+    this.tasks.restoreAuto();
   }
 
   // The extension turns auto-processing on at startup, outside the RPC channel.

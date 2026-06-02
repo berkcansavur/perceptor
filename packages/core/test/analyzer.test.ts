@@ -29,8 +29,17 @@ describe("analyze — TypeScript", () => {
       "class:OrderService",
       "const:OrderSchema",
       "enum:OrderType",
+      "function:computePriority",
       "type:OrderRequest",
     ]);
+  });
+
+  it("reads a function-valued exported const as a function node carrying its behavior", async () => {
+    const { graph } = await summarize("ts");
+    const fn = graph.nodes.find((node) => node.kind === "function" && node.name === "computePriority");
+    expect(fn?.behaviors.map((behavior) => behavior.name)).toEqual(["computePriority"]);
+    expect(fn?.behaviors[0]?.params.map((param) => param.name)).toEqual(["count"]);
+    expect(fn?.behaviors[0]?.returnType).toBe("number");
   });
 
   it("builds dependency edges from fields, constructors and type references", async () => {

@@ -22,6 +22,7 @@
   --kind-record: #c586c0;
   --kind-type: #4ec9b0;
   --kind-const: #4fc1ff;
+  --kind-function: #dcdcaa;
   --kind-annotation: #dcdcaa;
   --kind-delegate: #b180d7;
   --kind-module: #8a9bb8;
@@ -309,6 +310,7 @@ button:hover {
 .kind-struct { background: var(--kind-struct); }
 .kind-type { background: var(--kind-type); }
 .kind-const { background: var(--kind-const); }
+.kind-function { background: var(--kind-function); }
 .kind-annotation { background: var(--kind-annotation); }
 .kind-delegate { background: var(--kind-delegate); }
 .kind-module { background: var(--kind-module); }
@@ -1315,6 +1317,42 @@ body.tasks-open #behavior-drawer {
   font-size: 11px;
 }
 
+/* Kind-visibility chips: one per node kind in the graph. Click to dim the kind and hide its
+   rows from the tree (a toggled-off chip greys out and strikes through its badge). */
+.tree-kind-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.tree-kind-filter-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.kind-chip {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.kind-chip .kind-badge {
+  display: inline-block;
+}
+
+.kind-chip.off .kind-badge {
+  opacity: 0.35;
+  text-decoration: line-through;
+  filter: grayscale(1);
+}
+
 .task-add {
   color: var(--field);
   font-weight: 700;
@@ -2111,12 +2149,6 @@ body.tasks-open #behavior-drawer {
   border-color: var(--accent);
 }
 
-.fx-play.fx-playing {
-  background: var(--accent);
-  color: #0b0e14;
-  border-color: var(--accent);
-}
-
 /* Payload simulator: a self-contained block above the storyboard with editable fields for the
    values the branches hinge on. Kept visually separate (own background + border) so it never
    overlaps the animated steps below it. */
@@ -2251,11 +2283,6 @@ body.tasks-open #behavior-drawer {
 
 .fx-stub-row .fx-stub-value {
   flex: 1 1 auto;
-}
-
-.fx-sim-actions {
-  display: flex;
-  gap: 6px;
 }
 
 .fx-steps {

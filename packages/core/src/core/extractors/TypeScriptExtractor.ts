@@ -18,6 +18,15 @@ const TYPE_IDENTIFIER = "type_identifier";
 
 const FUNCTION_DECLARATION = "function_declaration";
 
+// Initializers that make an `export const NAME = …` a *function*, not an inert value:
+// `() => …`, `function () {}`, generators. Anything else (object, literal, call) stays a const.
+const FUNCTION_VALUE_TYPES: ReadonlySet<string> = new Set([
+  "arrow_function",
+  "function",
+  "function_expression",
+  "generator_function",
+]);
+
 // Handles .ts/.mts/.cts and .tsx (the grammars share this extractor).
 export class TypeScriptExtractor extends AbstractExtractor {
   protected classKind(nodeType: string): ClassKind | null {
@@ -87,8 +96,11 @@ export class TypeScriptExtractor extends AbstractExtractor {
     return { name: nameNode.text, kind: "type", file: relativeFile, line: typeNode.startPosition.row + 1, dependencies, behaviors: [] };
   }
 
-  // Only top-level `export const NAME = ...` (e.g. a zod schema). Local consts
-  // inside functions are ignored.
+  // Only top-level `export const NAME = ...`. A function-valued initializer
+  // (`= () => …` / `= function () {}`) is surfaced as a *function* node carrying that
+  // function as its single behavior, so its signature, complexity and flow are read
+  // like any method — instead of a hollow `const`. Everything else (objects, literals,
+  // schemas) stays a const. Local consts inside functions are ignored.
   private readExportedConst(lexicalNode: TsNode, relativeFile: string): ParsedClass | null {
     if (!this.isExportedConst(lexicalNode)) {
       return null;
@@ -98,7 +110,42 @@ export class TypeScriptExtractor extends AbstractExtractor {
     if (!nameNode) {
       return null;
     }
-    return { name: nameNode.text, kind: "const", file: relativeFile, line: lexicalNode.startPosition.row + 1, dependencies: [], behaviors: [] };
+    const line = lexicalNode.startPosition.row + 1;
+    const value = declarator?.childForFieldName("value") ?? null;
+    if (value && FUNCTION_VALUE_TYPES.has(value.type)) {
+      return {
+        name: nameNode.text,
+        kind: "function",
+        file: relativeFile,
+        line,
+        dependencies: [],
+        behaviors: [this.readValueFunction(nameNode.text, value, lexicalNode)],
+      };
+    }
+    return { name: nameNode.text, kind: "const", file: relativeFile, line, dependencies: [], behaviors: [] };
+  }
+
+  // The function bound to a const: its signature plus the *whole declaration*'s line span
+  // (so the complexity/flow pass slices the entire `const f = () => { … }` body).
+  private readValueFunction(name: string, functionNode: TsNode, lexicalNode: TsNode): Behavior {
+    const parametersNode = functionNode.childForFieldName("parameters");
+    const params = parametersNode ? this.readParameters(parametersNode) : this.singleArrowParam(functionNode);
+    return {
+      name,
+      visibility: "public",
+      isStatic: false,
+      returnType: this.typeText(functionNode.childForFieldName("return_type")) || "void",
+      params,
+      line: lexicalNode.startPosition.row + 1,
+      endLine: lexicalNode.endPosition.row + 1,
+    };
+  }
+
+  // A parenthesis-less single arrow param (`x => …`) has no formal_parameters node;
+  // the binding sits on the `parameter` field instead.
+  private singleArrowParam(functionNode: TsNode): Parameter[] {
+    const single = functionNode.childForFieldName("parameter");
+    return single ? [{ name: single.text, type: "" }] : [];
   }
 
   private isTopLevelType(typeNode: TsNode): boolean {
