@@ -5,7 +5,7 @@ import { CodingPreferences } from "../types";
 // Berkcan's house style is the out-of-the-box default; the form only edits deltas.
 export const DEFAULT_CODING_PREFERENCES: CodingPreferences = {
   primaryLanguage: "typescript",
-  additionalLanguages: [],
+  preferredFramework: "",
   naming: {
     classCase: "PascalCase",
     methodCase: "camelCase",
@@ -68,7 +68,7 @@ export class CodingPreferencesStore {
     const base = DEFAULT_CODING_PREFERENCES;
     return {
       primaryLanguage: stored.primaryLanguage ?? base.primaryLanguage,
-      additionalLanguages: stored.additionalLanguages ?? base.additionalLanguages,
+      preferredFramework: stored.preferredFramework ?? base.preferredFramework,
       naming: { ...base.naming, ...stored.naming },
       architecture: { ...base.architecture, ...stored.architecture },
       qualityGates: { ...base.qualityGates, ...stored.qualityGates },

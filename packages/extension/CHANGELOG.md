@@ -42,5 +42,5 @@ Initial release.
   grammars/webview assets, so it installs and runs on any machine with no `npm install`
   and no local server. Everything runs locally with your own Claude tokens.
 
-[Unreleased]: https://github.com/berkcansavur/repo-visualiser/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/berkcansavur/repo-visualiser/releases/tag/v0.1.0
+[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/berkcansavur/perceptor/releases/tag/v0.1.0

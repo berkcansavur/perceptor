@@ -398,7 +398,8 @@ button:hover {
 #behavior-modal,
 #edit-modal,
 #create-modal,
-#prefs-modal {
+#prefs-modal,
+#onboarding-modal {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
@@ -413,8 +414,22 @@ button:hover {
 #behavior-modal.hidden,
 #edit-modal.hidden,
 #create-modal.hidden,
-#prefs-modal.hidden {
+#prefs-modal.hidden,
+#onboarding-modal.hidden {
   display: none !important;
+}
+
+/* First-run welcome sits top-right so it stays out of the graph's way while
+   still owning the foreground via the shared overlay backdrop + z-index. */
+#onboarding-modal {
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 64px 24px 0 0;
+}
+
+#onboarding-modal .modal-card {
+  width: 380px;
+  max-width: 90vw;
 }
 
 .prefs-card {
@@ -469,20 +484,6 @@ button:hover {
 
 .prefs-grid input[type="checkbox"] {
   justify-self: start;
-}
-
-.prefs-checks {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--text);
-}
-
-.prefs-checks label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
 }
 
 .code-view {
@@ -580,6 +581,12 @@ button:hover {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 12px;
+}
+
+.onboarding-body {
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 10px;
 }
 
 #open-path {
@@ -1419,20 +1426,22 @@ body.tasks-open #behavior-drawer {
   flex-direction: column;
 }
 
-#chat-auto {
+.prefs-auto-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text);
   cursor: pointer;
 }
 
-#chat-auto-status {
+#prefs-auto-status {
   margin-left: auto;
+}
+
+.prefs-note {
+  margin-top: 6px;
+  font-size: 11px;
 }
 
 /* Claude-Desktop layout: a conversation list on the left, the selected thread + its

@@ -43,7 +43,7 @@ export class EditForm {
     try {
       this.codeView.textContent = await this.api.source(file, line, endLine);
     } catch {
-      this.codeView.textContent = "(source unavailable)";
+      this.codeView.textContent = t("behavior.sourceUnavailable");
     }
   }
 

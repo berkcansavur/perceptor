@@ -64,7 +64,7 @@ export function toCodingPreferences(payload: Record<string, unknown>): CodingPre
   const primaryLanguage = asLanguage(payload["primaryLanguage"], defaults.primaryLanguage);
   return {
     primaryLanguage,
-    additionalLanguages: toAdditionalLanguages(payload["additionalLanguages"], primaryLanguage),
+    preferredFramework: asString(payload["preferredFramework"]) ?? defaults.preferredFramework,
     naming: {
       classCase: asString(naming["classCase"]) ?? defaults.naming.classCase,
       methodCase: asString(naming["methodCase"]) ?? defaults.naming.methodCase,
@@ -92,11 +92,4 @@ export function toCodingPreferences(payload: Record<string, unknown>): CodingPre
     },
     commentsPolicy: asString(payload["commentsPolicy"]) ?? defaults.commentsPolicy,
   };
-}
-
-function toAdditionalLanguages(value: unknown, primaryLanguage: PreferredLanguage): PreferredLanguage[] {
-  const languages = asStringList(value)
-    .map((item) => asLanguage(item, primaryLanguage))
-    .filter((language) => language !== primaryLanguage);
-  return [...new Set(languages)];
 }

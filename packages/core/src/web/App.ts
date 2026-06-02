@@ -13,6 +13,7 @@ import { BehaviorForm } from "./forms/BehaviorForm";
 import { EditForm } from "./forms/EditForm";
 import { CreateForm } from "./forms/CreateForm";
 import { OpenRepoModal } from "./forms/OpenRepoModal";
+import { OnboardingModal } from "./forms/OnboardingModal";
 import { PreferencesForm } from "./forms/PreferencesForm";
 import { Toolbar } from "./ui/Toolbar";
 import { Toast } from "./ui/Toast";
@@ -34,9 +35,9 @@ export class App {
   private readonly tasksPanel = new TasksPanel(this.api, this.bus);
   private readonly chatPanel = new ChatPanel(this.api, this.bus);
   private readonly changesView = new ChangesView(this.api, this.bus);
-  private readonly chatAutoProcess = new AutoProcessControl(
+  private readonly autoProcess = new AutoProcessControl(
     this.api,
-    { container: "chat-auto", toggle: "chat-auto-toggle", label: "chat-auto-label", status: "chat-auto-status" },
+    { container: "prefs-auto", toggle: "prefs-auto-toggle", label: "prefs-auto-label", status: "prefs-auto-status" },
     this.bus
   );
   private readonly behaviorForm = new BehaviorForm(this.api, this.bus);
@@ -44,6 +45,7 @@ export class App {
   private readonly createForm = new CreateForm(this.api, this.bus);
   private readonly openRepo = new OpenRepoModal(this.api, this.state, this.bus);
   private readonly preferencesForm = new PreferencesForm(this.api, this.bus);
+  private readonly onboarding = new OnboardingModal(this.api, this.bus);
   private readonly toolbar = new Toolbar(this.state, this.bus);
   private readonly empty = byId("empty");
   private readonly stats = byId("stats");
@@ -58,10 +60,11 @@ export class App {
     this.tasksPanel.setup();
     this.chatPanel.setup();
     this.changesView.setup();
-    this.chatAutoProcess.setup();
+    this.autoProcess.setup();
     this.toolbar.setup();
     this.openRepo.setup();
     this.preferencesForm.setup();
+    this.onboarding.setup();
     this.wireBus();
 
     // The workspace is fixed to the editor's open folder; the in-app repo
@@ -80,6 +83,7 @@ export class App {
     this.setupAutoRefresh();
     void this.syncLocale();
     void this.loadGraph();
+    void this.onboarding.maybeShow();
   }
 
   // Adopt the persisted (disk) locale on startup so the UI and Claude's generated

@@ -2,6 +2,7 @@ import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
 import type { AppEvents, FlowReport } from "../types";
 import { byId } from "../dom";
+import { entitlements } from "../entitlements";
 import { t } from "../i18n";
 import { complexityStrip } from "../complexity/complexityStrip";
 import { queryStrip } from "../complexity/queryStrip";
@@ -123,6 +124,11 @@ export class BehaviorDrawer {
     this.lastFlow = flow;
     const container = byId("behavior-drawer-flow");
     const section = byId("behavior-drawer-flow-section");
+    if (!entitlements().has("runFlow")) {
+      container.innerHTML = "";
+      section.classList.add("hidden");
+      return;
+    }
     const markup = flowStrip(flow);
     container.innerHTML = markup;
     section.classList.toggle("hidden", markup === "");

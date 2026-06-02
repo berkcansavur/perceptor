@@ -2,6 +2,7 @@ import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
 import type { CreatePayload, TemplateRegistry } from "../types";
 import { byId } from "../dom";
+import { errorMessage } from "../errors";
 import { t } from "../i18n";
 
 const NAMED_TEMPLATES = new Set([
@@ -145,8 +146,8 @@ export class CreateForm {
       : { kind: "folder", dir, name };
     try {
       await this.api.create(body);
-    } catch {
-      this.fail(t("create.failed"));
+    } catch (error) {
+      this.fail(errorMessage(error));
       return;
     }
     this.close();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPreferences,
+  frameworkForLanguage,
   joinList,
   splitList,
   toPreferredLanguage,
@@ -9,7 +10,7 @@ import {
 
 const RAW: RawPreferenceInputs = {
   primaryLanguage: "java",
-  additionalLanguages: ["typescript", "csharp"],
+  preferredFramework: "Spring Boot",
   classCase: "PascalCase",
   methodCase: "camelCase",
   variableCase: "camelCase",
@@ -59,13 +60,20 @@ describe("preferencesSerialization", () => {
     expect(preferences.qualityGates.maxMethodLines).toBe(30);
   });
 
-  it("removes the primary language from the additional list", () => {
-    const preferences = buildPreferences({
-      ...RAW,
-      primaryLanguage: "typescript",
-      additionalLanguages: ["typescript", "java"],
-    });
-    expect(preferences.additionalLanguages).toEqual(["java"]);
+  it("keeps a framework that belongs to the primary language", () => {
+    const preferences = buildPreferences({ ...RAW, primaryLanguage: "java", preferredFramework: "Spring Boot" });
+    expect(preferences.preferredFramework).toBe("Spring Boot");
+  });
+
+  it("clears a framework that doesn't belong to the primary language", () => {
+    const preferences = buildPreferences({ ...RAW, primaryLanguage: "csharp", preferredFramework: "Spring Boot" });
+    expect(preferences.preferredFramework).toBe("");
+  });
+
+  it("frameworkForLanguage validates membership", () => {
+    expect(frameworkForLanguage("NestJS", "typescript")).toBe("NestJS");
+    expect(frameworkForLanguage("NestJS", "java")).toBe("");
+    expect(frameworkForLanguage("", "typescript")).toBe("");
   });
 
   it("falls back to 30 when max method lines is not a positive integer", () => {

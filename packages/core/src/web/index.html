@@ -41,11 +41,6 @@
     <section id="tree" class="hidden"></section>
 
     <section id="chat" class="hidden">
-      <label id="chat-auto" class="hidden">
-        <input id="chat-auto-toggle" type="checkbox" />
-        <span id="chat-auto-label" data-i18n="auto.label">Auto-process (uses Claude tokens)</span>
-        <span id="chat-auto-status" class="muted"></span>
-      </label>
       <div id="chat-body">
         <div id="chat-list"></div>
         <div id="chat-main">
@@ -104,6 +99,18 @@
     </aside>
 
     <div id="toast" class="hidden"></div>
+
+    <div id="onboarding-modal" class="hidden">
+      <div class="modal-card">
+        <div class="modal-title" data-i18n="onboarding.title">Welcome to Perceptor</div>
+        <p class="onboarding-body" data-i18n="onboarding.body"></p>
+        <p class="onboarding-body muted" data-i18n="onboarding.cost"></p>
+        <div class="modal-actions">
+          <button id="onboarding-skip" data-i18n="onboarding.skip">Not now</button>
+          <button id="onboarding-enable" class="primary" data-i18n="onboarding.enable">Enable auto-processing</button>
+        </div>
+      </div>
+    </div>
 
     <div id="behavior-modal" class="hidden">
       <div class="modal-card">
@@ -193,12 +200,8 @@
             <option value="java">Java</option>
             <option value="csharp">C#</option>
           </select>
-          <label class="modal-sub" data-i18n="prefs.additional">Additional languages</label>
-          <div class="prefs-checks">
-            <label><input id="prefs-lang-typescript" type="checkbox" /> TypeScript</label>
-            <label><input id="prefs-lang-java" type="checkbox" /> Java</label>
-            <label><input id="prefs-lang-csharp" type="checkbox" /> C#</label>
-          </div>
+          <label class="modal-sub" data-i18n="prefs.framework">Preferred framework</label>
+          <select id="prefs-framework"></select>
         </div>
 
         <div class="prefs-section" data-i18n="prefs.namingSection">Naming</div>
@@ -272,6 +275,14 @@
             <option value="doc-public" data-i18n="prefs.commentsDoc">Document public API</option>
           </select>
         </div>
+
+        <div class="prefs-section" data-i18n="prefs.autoSection">Automation</div>
+        <label id="prefs-auto" class="prefs-auto-row hidden">
+          <input id="prefs-auto-toggle" type="checkbox" />
+          <span id="prefs-auto-label" data-i18n="auto.label">Auto-process (uses Claude tokens)</span>
+          <span id="prefs-auto-status" class="muted"></span>
+        </label>
+        <div class="prefs-note muted" data-i18n="prefs.autoNote">Applied immediately — not part of Save.</div>
 
         <div id="prefs-error" class="modal-error hidden"></div>
         <div class="modal-actions">

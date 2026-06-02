@@ -458,7 +458,9 @@ export type QualityGatePreferences = {
 // generates or moves code (persisted at .visualise/coding-preferences.json).
 export type CodingPreferences = {
   primaryLanguage: PreferredLanguage;
-  additionalLanguages: PreferredLanguage[];
+  // Empty string = no framework preference. Constrained in the UI to the primary
+  // language's known frameworks, but stored as a free string so it stays forward-compatible.
+  preferredFramework: string;
   naming: NamingPreferences;
   architecture: ArchitecturePreferences;
   qualityGates: QualityGatePreferences;

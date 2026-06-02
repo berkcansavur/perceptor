@@ -32,12 +32,12 @@
   "pricing": "Free",
   "repository": {
     "type": "git",
-    "url": "https://github.com/berkcansavur/repo-visualiser.git"
+    "url": "https://github.com/berkcansavur/perceptor.git"
   },
   "bugs": {
-    "url": "https://github.com/berkcansavur/repo-visualiser/issues"
+    "url": "https://github.com/berkcansavur/perceptor/issues"
   },
-  "homepage": "https://github.com/berkcansavur/repo-visualiser#readme",
+  "homepage": "https://github.com/berkcansavur/perceptor#readme",
   "main": "./dist/extension.js",
   "activationEvents": [
     "onStartupFinished"

@@ -1,9 +1,15 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { CodingPreferences, PreferredLanguage } from "../types";
+import type { CodingPreferences } from "../types";
 import { byId } from "../dom";
 import { t } from "../i18n";
-import { buildPreferences, joinList, type RawPreferenceInputs } from "./preferencesSerialization";
+import {
+  buildPreferences,
+  FRAMEWORKS,
+  joinList,
+  toPreferredLanguage,
+  type RawPreferenceInputs,
+} from "./preferencesSerialization";
 
 // The Coding Preferences dialog: loads the per-repo standard, lets the user edit
 // every field, and persists it so Claude generates code that matches the repo.
@@ -19,6 +25,9 @@ export class PreferencesForm {
     byId("prefs-btn").addEventListener("click", () => void this.open());
     byId("prefs-cancel").addEventListener("click", () => this.close());
     byId("prefs-save").addEventListener("click", () => void this.save());
+    this.select("prefs-primary-language").addEventListener("change", () => {
+      this.populateFrameworks(this.select("prefs-framework").value);
+    });
     this.modal.addEventListener("mousedown", (event) => {
       if (event.target === this.modal) {
         this.close();
@@ -54,9 +63,7 @@ export class PreferencesForm {
 
   private fill(preferences: CodingPreferences): void {
     this.select("prefs-primary-language").value = preferences.primaryLanguage;
-    this.setLanguageCheck("typescript", preferences.additionalLanguages);
-    this.setLanguageCheck("java", preferences.additionalLanguages);
-    this.setLanguageCheck("csharp", preferences.additionalLanguages);
+    this.populateFrameworks(preferences.preferredFramework);
 
     this.input("prefs-class-case").value = preferences.naming.classCase;
     this.input("prefs-method-case").value = preferences.naming.methodCase;
@@ -87,7 +94,7 @@ export class PreferencesForm {
   private read(): RawPreferenceInputs {
     return {
       primaryLanguage: this.select("prefs-primary-language").value,
-      additionalLanguages: this.checkedLanguages(),
+      preferredFramework: this.select("prefs-framework").value,
       classCase: this.input("prefs-class-case").value,
       methodCase: this.input("prefs-method-case").value,
       variableCase: this.input("prefs-variable-case").value,
@@ -111,13 +118,17 @@ export class PreferencesForm {
     };
   }
 
-  private checkedLanguages(): PreferredLanguage[] {
-    const languages: PreferredLanguage[] = ["typescript", "java", "csharp"];
-    return languages.filter((language) => this.input(`prefs-lang-${language}`).checked);
-  }
-
-  private setLanguageCheck(language: PreferredLanguage, additional: readonly PreferredLanguage[]): void {
-    this.input(`prefs-lang-${language}`).checked = additional.includes(language);
+  // Rebuilds the framework dropdown for the currently selected primary language, keeping
+  // the desired value selected if it still belongs to that language (else "None").
+  private populateFrameworks(desired: string): void {
+    const language = toPreferredLanguage(this.select("prefs-primary-language").value);
+    const select = this.select("prefs-framework");
+    const none = `<option value="">${t("prefs.frameworkNone")}</option>`;
+    const options = FRAMEWORKS[language]
+      .map((framework) => `<option value="${framework}">${framework}</option>`)
+      .join("");
+    select.innerHTML = none + options;
+    select.value = FRAMEWORKS[language].includes(desired) ? desired : "";
   }
 
   private input(id: string): HTMLInputElement {

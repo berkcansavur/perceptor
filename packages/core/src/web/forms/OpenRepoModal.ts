@@ -2,6 +2,7 @@ import type { Api } from "../api/ApiClient";
 import type { AppState } from "../state/AppState";
 import type { Emitter } from "../Emitter";
 import { byId, closestEl, escapeHtml } from "../dom";
+import { errorMessage } from "../errors";
 import { t } from "../i18n";
 
 const RECENT_KEY = "perceptorRecent";
@@ -158,7 +159,7 @@ export class OpenRepoModal {
     try {
       result = await this.api.open(target);
     } catch (error) {
-      this.error.textContent = t("open.error", { error: error instanceof Error ? error.message : String(error) });
+      this.error.textContent = errorMessage(error);
       this.error.classList.remove("hidden");
       return;
     }

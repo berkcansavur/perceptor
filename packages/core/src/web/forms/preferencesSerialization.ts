@@ -3,11 +3,25 @@ import type { CodingPreferences, PreferredLanguage } from "../types";
 const PREFERRED_LANGUAGES: readonly PreferredLanguage[] = ["typescript", "java", "csharp"];
 const FALLBACK_MAX_METHOD_LINES = 30;
 
+// The frameworks offered per primary language; the form's framework dropdown is built
+// from the active language's list. An empty selection means "no framework preference".
+export const FRAMEWORKS: Record<PreferredLanguage, readonly string[]> = {
+  typescript: ["NestJS", "Express", "Next.js", "Angular", "React", "Vue"],
+  java: ["Spring Boot", "Quarkus", "Micronaut", "Jakarta EE"],
+  csharp: ["ASP.NET Core", "Blazor", ".NET MAUI", "Entity Framework"],
+};
+
+// Keeps a stored framework only if it belongs to the language's list; otherwise clears it
+// (e.g. switching primary language away from one whose framework was selected).
+export function frameworkForLanguage(framework: string, language: PreferredLanguage): string {
+  return FRAMEWORKS[language].includes(framework) ? framework : "";
+}
+
 // Plain (DOM-free) snapshot of the form so the build step stays pure and testable;
 // PreferencesForm reads the inputs into this and renders it back.
 export type RawPreferenceInputs = {
   primaryLanguage: string;
-  additionalLanguages: string[];
+  preferredFramework: string;
   classCase: string;
   methodCase: string;
   variableCase: string;
@@ -49,12 +63,9 @@ export function toPreferredLanguage(value: string): PreferredLanguage {
 
 export function buildPreferences(raw: RawPreferenceInputs): CodingPreferences {
   const primaryLanguage = toPreferredLanguage(raw.primaryLanguage);
-  const additionalLanguages = [...new Set(raw.additionalLanguages.map(toPreferredLanguage))].filter(
-    (language) => language !== primaryLanguage
-  );
   return {
     primaryLanguage,
-    additionalLanguages,
+    preferredFramework: frameworkForLanguage(raw.preferredFramework, primaryLanguage),
     naming: {
       classCase: raw.classCase,
       methodCase: raw.methodCase,
