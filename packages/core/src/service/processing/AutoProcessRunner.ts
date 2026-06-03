@@ -29,5 +29,5 @@ export interface AutoProcessRunner {
   readonly unavailableReason: AutoStatus["reason"];
   // `taskId` scopes the headless run to a single queued task; `session` ties the run
   // to that task's reusable Claude session so it resumes instead of cold-starting.
-  run(rootDirectory: string, taskId: string, session: RunSession): AutoProcessRun;
+  run(rootDirectory: string, taskId: string, session: RunSession, imageAttachmentPaths: string[]): AutoProcessRun;
 }

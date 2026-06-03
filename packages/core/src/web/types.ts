@@ -27,6 +27,7 @@ export type {
   TaskKind,
   TaskStatus,
   TaskMessage,
+  MessageAttachment,
   TaskImpact,
   TaskUsage,
   TaskLock,
