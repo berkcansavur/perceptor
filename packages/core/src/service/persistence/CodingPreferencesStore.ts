@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
 import { CodingPreferences } from "../types";
 
 // Berkcan's house style is the out-of-the-box default; the form only edits deltas.
@@ -59,6 +60,7 @@ export class CodingPreferencesStore {
   save(preferences: Partial<CodingPreferences>): CodingPreferences {
     const merged = this.withDefaults(preferences);
     const file = this.file();
+    ensureVisualiseIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(merged, null, 2));
     return merged;

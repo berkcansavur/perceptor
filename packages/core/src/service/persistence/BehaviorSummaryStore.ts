@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
 import { BehaviorSummary } from "../types";
 
 // Caches Claude's one-line method summaries (.visualise/behavior-summaries.json),
@@ -37,6 +38,7 @@ export class BehaviorSummaryStore {
     const all = this.readAll();
     all[this.key(file, behavior)] = { text, at: new Date().toISOString() };
     const target = this.file();
+    ensureVisualiseIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(target), { recursive: true });
     const temporaryFile = `${target}.${process.pid}.tmp`;
     fs.writeFileSync(temporaryFile, JSON.stringify(all, null, 2));

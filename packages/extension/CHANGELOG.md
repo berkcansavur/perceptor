@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-03
+
+### Added
+- **Markdown rendering**: Claude responses now render as rich markdown — bold,
+  italic, inline code, fenced code blocks (with Copy button), lists and blockquotes.
+- **Image paste and drag-and-drop**: Ctrl+V or drag-and-drop to attach images in
+  chat; saved under `.visualise/attachments/` with thumbnail preview.
+- **Image attachments forwarded to Claude**: `AutoProcessor` collects image
+  attachment paths from task messages and `ClaudeProcessRunner` appends them to
+  the CLI prompt so the skill can read them via the Read tool.
+- **Image display in chat**: `ReadAttachmentCommand` serves attachment files as
+  base64 data URLs; `ChatPanel` loads them asynchronously after render.
+- **Dynamic skill discovery**: `SlashCommandMenu` now scans `<project>/.claude/skills/`
+  and `~/.claude/skills/` via `ListSkillsCommand` instead of a hardcoded 4-skill list,
+  showing all of the user's Claude CLI skills.
+- **Slash command menu**: typing `/` in the chat input opens an autocomplete menu —
+  navigate with arrow keys and select with Enter.
+
+### Fixed
+- File drag-and-drop in VS Code webview: added document-level `dragover`/`drop`
+  prevention and expanded the drop zone to `#chat-main`.
+
 ## [0.2.0] - 2026-06-03
 
 ### Added
@@ -65,6 +87,7 @@ Initial release.
   grammars/webview assets, so it installs and runs on any machine with no `npm install`
   and no local server. Everything runs locally with your own Claude tokens.
 
-[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/berkcansavur/perceptor/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/berkcansavur/perceptor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/berkcansavur/perceptor/releases/tag/v0.1.0
