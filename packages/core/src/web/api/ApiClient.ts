@@ -1,5 +1,6 @@
 import type {
   ApiError,
+  MessageAttachment,
   ApiRequest,
   ApiResponse,
   AutoActivity,
@@ -41,6 +42,7 @@ const vscode = acquireVsCodeApi();
 type ApiContract = {
   graph: Graph | null;
   meta: MetaResponse;
+  uploadAttachment: { path: string };
   reanalyze: { root: string; stats: Graph["stats"] };
   fileTemplates: TemplateRegistry;
   source: { code: string };
@@ -64,6 +66,8 @@ type ApiContract = {
   setLocale: { locale: string };
   gitStatus: { isRepo: boolean; dirtyFiles: string[]; trackedFiles: string[] };
   openFile: { file: string };
+  listSkills: { skills: { name: string; description: string }[] };
+  readAttachment: { dataUrl: string };
 };
 
 // The behavior every consumer depends on — an abstraction over the transport. Components
@@ -80,7 +84,8 @@ export interface Api {
   tasks(): Promise<Task[]>;
   enqueueTask(payload: EnqueuePayload): Promise<void>;
   setTaskStatus(id: string, status: TaskStatus): Promise<void>;
-  replyToTask(id: string, message: string): Promise<void>;
+  replyToTask(id: string, message: string, attachments?: MessageAttachment[]): Promise<void>;
+  uploadAttachment(data: string, name: string): Promise<{ path: string }>;
   archiveTask(id: string): Promise<void>;
   deleteTask(id: string): Promise<void>;
   editRequest(id: string, description: string): Promise<void>;
@@ -106,6 +111,8 @@ export interface Api {
   setLocale(locale: string): Promise<void>;
   gitStatus(): Promise<ApiContract["gitStatus"]>;
   openFile(file: string, line: string): Promise<void>;
+  listSkills(): Promise<{ name: string; description: string }[]>;
+  readAttachment(attachmentPath: string): Promise<string>;
 }
 
 // Thrown when the host answers with an ErrorResponse. Carries the machine `code`
@@ -208,8 +215,12 @@ export class ApiClient implements Api {
     await this.call("updateTask", { id, intent: "set-status", status });
   }
 
-  async replyToTask(id: string, message: string): Promise<void> {
-    await this.call("updateTask", { id, intent: "reply", message });
+  async replyToTask(id: string, message: string, attachments: MessageAttachment[] = []): Promise<void> {
+    await this.call("updateTask", { id, intent: "reply", message, attachments });
+  }
+
+  async uploadAttachment(data: string, name: string): Promise<{ path: string }> {
+    return this.call("uploadAttachment", { data, name });
   }
 
   async archiveTask(id: string): Promise<void> {
@@ -312,5 +323,15 @@ export class ApiClient implements Api {
   // FileOpener does the editor work).
   async openFile(file: string, line: string): Promise<void> {
     await this.call("openFile", { file, line: Number(line) });
+  }
+
+  async listSkills(): Promise<{ name: string; description: string }[]> {
+    const { skills } = await this.call("listSkills", {});
+    return skills;
+  }
+
+  async readAttachment(attachmentPath: string): Promise<string> {
+    const { dataUrl } = await this.call("readAttachment", { path: attachmentPath });
+    return dataUrl;
   }
 }

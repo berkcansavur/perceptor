@@ -98,7 +98,7 @@ describe("TaskStore.editMessage", () => {
 
     expect(edited.status).toBe("pending");
     const stored = store.read()[0];
-    expect(stored?.messages).toEqual([{ role: "user", text: "do A differently", at: "2026-01-01T00:00:00Z" }]);
+    expect(stored?.messages).toEqual([{ role: "user", text: "do A differently", at: "2026-01-01T00:00:00Z", attachments: [] }]);
     expect(stored?.artifact.kind).toBe("none");
     expect(stored?.sessionId).toBeNull();
   });

@@ -9,10 +9,17 @@ export type TaskStatus =
   | "error"
   | "processing";
 
+export type MessageAttachment = {
+  type: "image";
+  path: string;
+  name: string;
+}
+
 export type TaskMessage = {
   role: string;
   text: string;
   at: string;
+  attachments: MessageAttachment[];
 }
 
 export type TaskImpact = {
@@ -188,7 +195,7 @@ export type EnqueuePayload = TaskKind;
 // The webview sends exactly one update intent, discriminated by `intent`; each carries
 // only the fields it sets — no nullable patch-bag where null means "leave unchanged".
 export type SetStatusUpdate = { id: string; intent: "set-status"; status: TaskStatus };
-export type ReplyUpdate = { id: string; intent: "reply"; message: string };
+export type ReplyUpdate = { id: string; intent: "reply"; message: string; attachments: MessageAttachment[] };
 export type DismissUpdate = { id: string; intent: "dismiss" };
 export type UpdatePayload = SetStatusUpdate | ReplyUpdate | DismissUpdate;
 
@@ -211,6 +218,7 @@ export type EmptyRequest = Record<string, never>;
 export type ApiRequest = {
   graph: EmptyRequest;
   meta: EmptyRequest;
+  uploadAttachment: { data: string; name: string };
   reanalyze: EmptyRequest;
   fileTemplates: EmptyRequest;
   tasks: EmptyRequest;
@@ -234,6 +242,8 @@ export type ApiRequest = {
   stopProcessing: { taskId: string | null };
   setLocale: { locale: string };
   openFile: { file: string; line: number };
+  listSkills: EmptyRequest;
+  readAttachment: { path: string };
 }
 
 // Host-provided capability the service can't implement itself: opening a file in the

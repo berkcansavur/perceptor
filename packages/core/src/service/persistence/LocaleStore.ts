@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
 
 export type Locale = "en" | "tr";
 
@@ -31,6 +32,7 @@ export class LocaleStore {
   save(locale: string): Locale {
     const normalized = this.normalize(locale);
     const file = this.file();
+    ensureVisualiseIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ locale: normalized }, null, 2));
     return normalized;

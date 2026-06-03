@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
 
 // The auto-processing opt-in ("let Claude carry out tasks"), persisted to
 // .visualise/auto.json so the choice survives an editor reload. Without this the flag
@@ -29,6 +30,7 @@ export class AutoEnableStore {
 
   save(enabled: boolean): void {
     const file = this.file();
+    ensureVisualiseIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ enabled }, null, 2));
   }

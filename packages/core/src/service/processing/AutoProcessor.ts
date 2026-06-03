@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import * as path from "path";
 import { AutoActivity, AutoStatus, Task } from "../types";
 import { TaskStore } from "../task/TaskStore";
 import { ResultStore } from "../task/ResultStore";
@@ -239,7 +240,8 @@ export class AutoProcessor {
       item.sessionId = session.sessionId;
     });
 
-    const run = this.runner.run(this.getRoot(), task.id, session);
+    const imageAttachmentPaths = this.imageAttachmentPaths(task);
+    const run = this.runner.run(this.getRoot(), task.id, session, imageAttachmentPaths);
     this.activeRuns.set(task.id, { run, footprint, session });
     this.store.mutate(task.id, (item) => {
       item.lock = { pid: run.pid, startedAt: new Date().toISOString() };
@@ -290,6 +292,14 @@ export class AutoProcessor {
     return { sessionId: randomUUID(), resume: false };
   }
 
+  private imageAttachmentPaths(task: Task): string[] {
+    const root = this.getRoot();
+    return task.messages
+      .flatMap((message) => message.attachments)
+      .filter((attachment) => attachment.type === "image" && attachment.path)
+      .map((attachment) => path.join(root, attachment.path));
+  }
+
   // Accumulate this run's tokens/cost onto the task so the UI shows the running
   // total a task has cost across its propose/apply/chat runs.
   private recordUsage(id: string, usage: StreamUsage): void {
@@ -312,7 +322,7 @@ export class AutoProcessor {
       task.lock = null;
       if (stopped) {
         task.auto = { status: task.status, attempts: MAX_AUTO_ATTEMPTS };
-        task.messages.push({ role: "claude", text: this.stoppedMessage, at: new Date().toISOString() });
+        task.messages.push({ role: "claude", text: this.stoppedMessage, at: new Date().toISOString(), attachments: [] });
         return;
       }
       if (errorMessage && !CLAUDE_ADVANCED_STATUSES.has(task.status)) {
@@ -321,6 +331,7 @@ export class AutoProcessor {
           role: "claude",
           text: `${errorMessage} (see ${AUTO_PROCESS_LOG})`,
           at: new Date().toISOString(),
+          attachments: [],
         });
       }
     });

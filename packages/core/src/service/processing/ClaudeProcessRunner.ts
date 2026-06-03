@@ -183,13 +183,17 @@ export class ClaudeProcessRunner implements AutoProcessRunner {
     this.unavailableReason = docker ? "docker" : this.command ? null : "claude-cli-missing";
   }
 
-  run(rootDirectory: string, taskId: string, session: RunSession): AutoProcessRun {
+  run(rootDirectory: string, taskId: string, session: RunSession, imageAttachmentPaths: string[]): AutoProcessRun {
     if (!this.command) {
       throw new Error("claude command not available");
     }
     const logPath = path.join(rootDirectory, AUTO_PROCESS_LOG);
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
-    const prompt = `/visualise tasks ${rootDirectory} --task ${taskId}`;
+    let prompt = `/visualise tasks ${rootDirectory} --task ${taskId}`;
+    if (imageAttachmentPaths.length > 0) {
+      const imageList = imageAttachmentPaths.map((imagePath) => `- ${imagePath}`).join("\n");
+      prompt += `\n\nImage attachments — read each with the Read tool:\n${imageList}`;
+    }
     const sessionArg = session.resume ? ["--resume", session.sessionId] : ["--session-id", session.sessionId];
     fs.appendFileSync(
       logPath,

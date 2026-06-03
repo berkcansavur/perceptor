@@ -34,6 +34,9 @@ import {
   EditMessageCommand,
   ComplexityCommand,
   OpenFileCommand,
+  UploadAttachmentCommand,
+  ListSkillsCommand,
+  ReadAttachmentCommand,
 } from "./commands";
 
 // Composition root + RPC boundary. It owns no business logic — it wires the shared session
@@ -88,6 +91,9 @@ export class CoreService {
       new SetLocaleCommand(this.preferences),
       new BehaviorSummaryCommand(this.preferences),
       new ComplexityCommand(this.analysis),
+      new UploadAttachmentCommand(rootProvider),
+      new ListSkillsCommand(rootProvider),
+      new ReadAttachmentCommand(rootProvider),
     ]);
   }
 

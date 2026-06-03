@@ -1,10 +1,13 @@
 import type { Api } from "../api/ApiClient";
 import type { Emitter } from "../Emitter";
-import type { Task, TaskMessage, TaskStatus } from "../types";
+import type { Task, TaskMessage, TaskStatus, MessageAttachment } from "../types";
 import { byId, closestEl, escapeHtml } from "../dom";
 import { t } from "../i18n";
 import { fromBehavior, fromClass, specDescription, specName, toClass } from "../taskView";
 import { roleLabel } from "./roleLabel";
+import { renderMarkdown, setupCodeCopyHandlers } from "./MarkdownRenderer";
+import { SlashCommandMenu } from "./SlashCommandMenu";
+import { ImageAttachment } from "./ImageAttachment";
 
 const REFRESH_MS = 2000;
 const ACTIVITY_MS = 1000;
@@ -19,6 +22,8 @@ const KEY_SEPARATOR = "::";
 export class ChatPanel {
   private readonly list = byId("chat-list");
   private readonly thread = byId("chat-thread");
+  private slashMenu: SlashCommandMenu | null = null;
+  private imageAttachment: ImageAttachment | null = null;
   private lastJson: string | null = null;
   private rendered: Task[] = [];
   // The conversation shown on the right, or null in "new chat" mode.
@@ -38,13 +43,26 @@ export class ChatPanel {
   setup(): void {
     byId("chat-send").addEventListener("click", () => void this.send());
     const input = byId<HTMLTextAreaElement>("chat-input");
+    const composer = byId("chat-composer");
+
+    this.slashMenu = new SlashCommandMenu(input, this.api, () => {
+      // Skill selected — user continues typing args in the input
+    });
+    this.imageAttachment = new ImageAttachment(input, composer, this.api, byId("chat-main"));
+
     input.addEventListener("keydown", (event) => {
+      if (this.slashMenu?.handleKeydown(event)) {
+        return;
+      }
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         void this.send();
       }
     });
-    input.addEventListener("input", () => this.autoGrow(input));
+    input.addEventListener("input", () => {
+      this.autoGrow(input);
+      void this.slashMenu?.handleInput();
+    });
     byId("chat-hint").addEventListener("click", (event) => {
       const copy = closestEl<HTMLElement>(event.target, "[data-copy-cmd]");
       if (copy) {
@@ -55,6 +73,7 @@ export class ChatPanel {
     });
     this.list.addEventListener("click", (event) => this.onListClick(event));
     this.thread.addEventListener("click", (event) => this.onThreadClick(event));
+    setupCodeCopyHandlers(this.thread);
     this.bus.on("auto:changed", () => void this.refresh(true));
     this.bus.on("chat:select", (taskId) => this.select(taskId));
     this.bus.on("chat:new", (payload) => void this.newConversation(payload.description));
@@ -203,8 +222,18 @@ export class ChatPanel {
     }
     input.value = "";
     this.autoGrow(input);
+    this.slashMenu?.hide();
+
+    const attachmentPaths = this.imageAttachment?.getAttachmentPaths() ?? [];
+    const attachments: MessageAttachment[] = attachmentPaths.map((attachmentPath) => ({
+      type: "image",
+      path: attachmentPath,
+      name: attachmentPath.split("/").pop() ?? "image",
+    }));
+    this.imageAttachment?.clear();
+
     if (this.selectedId) {
-      await this.api.replyToTask(this.selectedId, text);
+      await this.api.replyToTask(this.selectedId, text, attachments);
     } else {
       this.selectNewest = true;
       await this.api.sendRequest(text);
@@ -338,7 +367,20 @@ export class ChatPanel {
       return;
     }
     this.thread.innerHTML = this.renderThread(selected);
+    this.loadAttachmentImages();
     this.thread.scrollTop = this.thread.scrollHeight;
+  }
+
+  private loadAttachmentImages(): void {
+    for (const image of this.thread.querySelectorAll<HTMLImageElement>("img[data-attachment-path]")) {
+      const attachmentPath = image.dataset.attachmentPath;
+      if (!attachmentPath || image.src) continue;
+      void this.api.readAttachment(attachmentPath).then((dataUrl) => {
+        if (dataUrl) image.src = dataUrl;
+      }).catch(() => {
+        // attachment file missing or unreadable
+      });
+    }
   }
 
   private renderList(requests: Task[]): void {
@@ -466,9 +508,16 @@ export class ChatPanel {
       return this.renderEditor(key, message.text, "data-edit-msg-save");
     }
     const edit = message.role === "user" ? this.editButton(request, "data-edit-msg", key) : "";
-    return `<div class="chat-msg chat-${message.role}"><b>${escapeHtml(roleLabel(message.role))}:</b> ${escapeHtml(
-      message.text
-    )}${edit}</div>`;
+    const renderedText = message.role === "claude"
+      ? renderMarkdown(message.text)
+      : escapeHtml(message.text);
+    const messageAttachments = message.attachments ?? [];
+    const attachmentHtml = messageAttachments.length > 0
+      ? `<div class="chat-msg-attachments">${messageAttachments.map(
+          (attachment) => `<img class="chat-msg-image" data-attachment-path="${escapeHtml(attachment.path)}" alt="${escapeHtml(attachment.name)}" />`
+        ).join("")}</div>`
+      : "";
+    return `<div class="chat-msg chat-${message.role}"><b>${escapeHtml(roleLabel(message.role))}:</b> ${renderedText}${edit}${attachmentHtml}</div>`;
   }
 
   // The ✎ affordance. Only free-form `request` tasks can be re-edited (the host's

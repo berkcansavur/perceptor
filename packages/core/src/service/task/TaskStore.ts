@@ -70,7 +70,12 @@ export class TaskStore {
       auto: (raw["auto"] as TaskMeta["auto"]) ?? null,
       usage: (raw["usage"] as TaskMeta["usage"]) ?? null,
       sessionId: (raw["sessionId"] as string | null) ?? null,
-      messages: (raw["messages"] as TaskMessage[]) ?? [],
+      messages: (Array.isArray(raw["messages"]) ? raw["messages"] : []).map((message: Record<string, unknown>) => ({
+        role: (message["role"] as string) ?? "",
+        text: (message["text"] as string) ?? "",
+        at: (message["at"] as string) ?? "",
+        attachments: Array.isArray(message["attachments"]) ? message["attachments"] : [],
+      })) as TaskMessage[],
       createdAt: (raw["createdAt"] as string) ?? "",
       updatedAt: (raw["updatedAt"] as string) ?? "",
     };
@@ -129,7 +134,10 @@ export class TaskStore {
         task.status = payload.status;
         return;
       case "reply":
-        task.messages.push({ role: "user", text: payload.message, at: new Date().toISOString() });
+        task.messages.push({
+          role: "user", text: payload.message, at: new Date().toISOString(),
+          attachments: payload.attachments ?? []
+        });
         // A user reply re-opens the auto gate so the processor gives Claude a fresh
         // attempt (re-send after an error / asking for a revision).
         task.auto = null;

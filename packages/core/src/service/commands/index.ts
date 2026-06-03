@@ -25,3 +25,6 @@ export { CreateCommand } from "./CreateCommand";
 export { GetPreferencesCommand } from "./GetPreferencesCommand";
 export { SavePreferencesCommand } from "./SavePreferencesCommand";
 export { BehaviorSummaryCommand } from "./BehaviorSummaryCommand";
+export { UploadAttachmentCommand } from "./UploadAttachmentCommand";
+export { ListSkillsCommand } from "./ListSkillsCommand";
+export { ReadAttachmentCommand } from "./ReadAttachmentCommand";

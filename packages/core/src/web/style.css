@@ -1786,6 +1786,195 @@ body.tasks-open #behavior-drawer {
   border-color: var(--accent);
 }
 
+/* ---- Slash command menu ---- */
+.slash-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.slash-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.slash-item:hover,
+.slash-item-active {
+  background: var(--panel-2);
+}
+
+.slash-name {
+  font-weight: 600;
+  color: var(--accent);
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+}
+
+.slash-desc {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---- Image attachment preview ---- */
+.attachment-preview {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.attachment-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-over {
+  border-color: var(--accent) !important;
+  background: rgba(117, 190, 255, 0.05);
+}
+
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(106, 161, 255, 0.08);
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.drop-overlay-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 12px 24px;
+  background: var(--panel);
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  pointer-events: none;
+}
+
+/* ---- Markdown rendering in chat ---- */
+.chat-code-block {
+  margin: 8px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.chat-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(0,0,0,0.15);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chat-code-copy {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.chat-code-copy:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+
+.chat-code-block pre {
+  margin: 0;
+  padding: 10px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.chat-code-block code {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+}
+
+.chat-inline-code {
+  background: rgba(117, 190, 255, 0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 12px;
+}
+
+.chat-list-item {
+  padding-left: 12px;
+}
+
+.chat-blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  color: var(--muted);
+  margin: 4px 0;
+}
+
+.chat-msg-attachments {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.chat-msg-image {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 #changes {
   position: absolute;
   top: 46px;

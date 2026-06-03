@@ -12,7 +12,12 @@ function messages(value: unknown): TaskMessage[] {
   }
   return value.map((item) => {
     const raw = (item ?? {}) as Record<string, unknown>;
-    return { role: str(raw["role"]), text: str(raw["text"]), at: str(raw["at"]) };
+    const rawAttachments = Array.isArray(raw["attachments"]) ? raw["attachments"] : [];
+    const attachments = rawAttachments.map((attachment: unknown) => {
+      const rec = (attachment ?? {}) as Record<string, unknown>;
+      return { type: "image" as const, path: str(rec["path"]), name: str(rec["name"]) };
+    });
+    return { role: str(raw["role"]), text: str(raw["text"]), at: str(raw["at"]), attachments };
   });
 }
 

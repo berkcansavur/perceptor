@@ -57,6 +57,7 @@ export class PreferencesForm {
   private async save(): Promise<void> {
     const preferences = buildPreferences(this.read());
     await this.api.savePreferences(preferences);
+    this.bus.emit("graph:reanalyze", undefined);
     this.bus.emit("toast", t("prefs.saved"));
     this.close();
   }

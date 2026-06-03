@@ -45,8 +45,18 @@ export function toUpdatePayload(payload: Record<string, unknown>): UpdatePayload
   switch (intent) {
     case "set-status":
       return { id, intent: "set-status", status: (asString(payload["status"]) ?? "pending") as TaskStatus };
-    case "reply":
-      return { id, intent: "reply", message: asString(payload["message"]) ?? "" };
+    case "reply": {
+      const rawAttachments = Array.isArray(payload["attachments"]) ? payload["attachments"] : [];
+      const attachments = rawAttachments.map((item: unknown) => {
+        const record = typeof item === "object" && item !== null ? item as Record<string, unknown> : {};
+        return {
+          type: "image" as const,
+          path: asString(record["path"]) ?? "",
+          name: asString(record["name"]) ?? "",
+        };
+      });
+      return { id, intent: "reply", message: asString(payload["message"]) ?? "", attachments };
+    }
     case "dismiss":
       return { id, intent: "dismiss" };
     default:
