@@ -195,6 +195,314 @@ forbidCodeDuplication, maxMethodLines, enforceSingleResponsibility }, commentsPo
 - **Impact on existing structure**: trace call sites and shared state the change touches;
   a change that ripples must be reported in the impact notes, not silently absorbed.
 
+## 1d. Code smell detection (language-agnostic, enforce on edit-behavior / add-behavior / request)
+
+When reading code for a proposal, scan for these structural smells. If found,
+include the refactoring in the diff — do not preserve the smell. Report each
+detection in impact notes (e.g. "Strategy smell: 3 if blocks on `type`").
+
+### Strategy smell
+**Detect:** 3+ `if`/`else if`/`switch` branches checking the same discriminator variable.
+**When to apply polymorphism:** the branches share the same input shape but differ in behavior —
+each branch is a self-contained operation, not a simple value mapping or guard check.
+**Refactor:** Enum discriminator + strategy interface + `Map<Enum, Strategy>` resolver.
+```typescript
+// BEFORE — smell: 3 branches on payload.type (magic strings, no enum, no polymorphism)
+if (payload.type === 'email') { sendEmail(payload) }
+else if (payload.type === 'sms') { sendSms(payload) }
+else if (payload.type === 'push') { sendPush(payload) }
+
+// AFTER — enum + strategy interface + typed resolver
+const enum NotificationType { Email = 'EMAIL', Sms = 'SMS', Push = 'PUSH' }
+
+type NotificationPayload = { readonly type: NotificationType; readonly recipient: string; readonly content: string };
+
+interface NotificationStrategy { send(payload: NotificationPayload): void }
+
+class EmailStrategy implements NotificationStrategy {
+  send(payload: NotificationPayload): void { /* ... */ }
+}
+class SmsStrategy implements NotificationStrategy {
+  send(payload: NotificationPayload): void { /* ... */ }
+}
+class PushStrategy implements NotificationStrategy {
+  send(payload: NotificationPayload): void { /* ... */ }
+}
+
+const notificationStrategyMap: ReadonlyMap<NotificationType, NotificationStrategy> = new Map([
+  [NotificationType.Email, new EmailStrategy()],
+  [NotificationType.Sms, new SmsStrategy()],
+  [NotificationType.Push, new PushStrategy()],
+]);
+
+function resolveNotificationStrategy(type: NotificationType): NotificationStrategy {
+  const strategy = notificationStrategyMap.get(type);
+  if (!strategy) throw new UnsupportedNotificationTypeException(type);
+  return strategy;
+}
+
+resolveNotificationStrategy(payload.type).send(payload);
+```
+
+### Template Method smell
+**Detect:** 2+ classes repeating the same step sequence with minor per-step variation.
+**Refactor:** Abstract base with the shared sequence; `protected abstract` hooks for varying steps.
+```typescript
+// BEFORE — OrderProcessor and RefundProcessor both: validate → calculate → persist → notify
+// AFTER
+abstract class TransactionProcessor<T extends Transaction> {
+  process(transaction: T): void { this.validate(transaction); this.calculate(transaction); this.persist(transaction); this.notify(transaction); }
+  protected abstract validate(transaction: T): void;
+  protected abstract calculate(transaction: T): void;
+  // persist and notify can be concrete if identical
+}
+```
+
+### Factory smell
+**Detect:** `if`/`switch` creating different object types based on a discriminator.
+**Refactor:** Enum discriminator + `ReadonlyMap<Enum, () => T>` factory registry.
+```typescript
+const enum FileType { Csv = 'CSV', Json = 'JSON', Xml = 'XML' }
+
+interface FileParser { parse(content: string): ReadonlyArray<Record<string, unknown>> }
+
+const fileParserFactory: ReadonlyMap<FileType, () => FileParser> = new Map([
+  [FileType.Csv, () => new CsvParser()],
+  [FileType.Json, () => new JsonParser()],
+  [FileType.Xml, () => new XmlParser()],
+]);
+
+function createFileParser(type: FileType): FileParser {
+  const factory = fileParserFactory.get(type);
+  if (!factory) throw new UnsupportedFileTypeException(type);
+  return factory();
+}
+```
+
+### SRP violation
+**Detect:** Single method mixing unrelated responsibilities (validation + persistence + notification).
+**Refactor:** Split into focused methods, each with one responsibility; orchestrate from a coordinator.
+
+### Primitive obsession
+**Detect:** 3+ primitives that always travel together (e.g. `street, city, zip`).
+**Refactor:** Wrap in a value object type.
+```typescript
+// BEFORE: createUser(name: string, street: string, city: string, zip: string)
+// AFTER
+type Address = { readonly street: string; readonly city: string; readonly zip: string };
+createUser(name: string, address: Address): void
+```
+
+### Feature envy
+**Detect:** A method mostly accesses another class's fields/getters rather than its own.
+**Refactor:** Move the method to the class it envies, or extract the accessed data into a method on that class.
+
+### Long parameter list
+**Detect:** 4+ parameters on a single method.
+**Refactor:** Group into a parameter object type with `readonly` fields and enum where applicable.
+```typescript
+const enum SortOrder { Asc = 'ASC', Desc = 'DESC' }
+
+type SearchCriteria = {
+  readonly query: string;
+  readonly page: number;
+  readonly size: number;
+  readonly sortBy: string;
+  readonly order: SortOrder;
+};
+
+// BEFORE: search(query: string, page: number, size: number, sortBy: string, order: SortOrder)
+// AFTER
+function search(criteria: SearchCriteria): SearchResult { /* ... */ }
+```
+
+### Code duplication
+**Detect:** Near-identical logic in 2+ locations.
+**Refactor:** Extract into a shared helper, utility, or base-class method. Never copy-paste.
+
+**When to prefer polymorphism over conditionals:**
+- Each branch has **distinct behavior** (not just a value lookup — a value lookup is a simple `Map.get()`, not a strategy).
+- The set of cases is **likely to grow** (open/closed principle — new case = new class, no existing code touched).
+- The branch logic is **complex enough** (3+ lines per branch) — trivial one-liners stay as a map or ternary.
+- Do NOT apply polymorphism to: simple boolean guards, null checks, feature flags, or value mappings.
+
+**Type strictness rules (non-negotiable in examples and generated code):**
+- **Enums over magic strings**: every discriminator (`type`, `status`, `role`, `kind`) MUST be a `const enum` — never bare string literals in conditionals or map keys.
+- **`readonly` on every data type field** — mutable domain types are a code smell.
+- **`ReadonlyMap` / `ReadonlyArray`** for lookup tables and collections that must not be mutated.
+- **Explicit return types** on every function/method — no inference reliance.
+- **Named resolver/factory functions** — never inline `map.get()` without a null guard and domain exception.
+
+**Guard rules:**
+- Apply only when the smell is **clear and unambiguous** — do not force a pattern on straightforward sequential logic.
+- When `spec.description` explicitly asks to keep the current structure, respect it — note the smell in impact notes but do not refactor.
+- These smells complement `coding-preferences.json` `patterns[]`; if the user listed a pattern there, treat it as a hard constraint.
+
+## 1e. Framework-specific idioms (enforce when `preferredFramework` is set)
+
+When `coding-preferences.json` has a `preferredFramework`, apply these mandatory
+mechanics — code that ignores them is **not framework-native** and must be rejected.
+
+### TypeScript frameworks
+
+**NestJS**
+- DI: `@Injectable()` + constructor injection via Nest IoC — never `new` a service.
+  Every provider registered in its feature `@Module({ providers, controllers, exports })`.
+- Routing: `@Controller` + HTTP decorators (`@Get`, `@Post`, `@Body()`, `@Param()`).
+  No raw `req`/`res` — use typed DTOs.
+- Validation: `class-validator` decorators on DTO classes (`@IsString()`, `@IsNotEmpty()`,
+  `@ValidateNested()`). Pipe `ValidationPipe({ whitelist: true, transform: true })` globally.
+  Never validate manually in a controller.
+- Error handling: domain exceptions extend `HttpException` or use a global `@Catch()`
+  `ExceptionFilter` that maps domain errors → HTTP status + response envelope.
+  No try/catch in controllers.
+- Cross-cutting: auth via `@UseGuards()`, logging via `@UseInterceptors()`, caching via
+  `@CacheInterceptor` — never inline in method body (SRP).
+- Data access: repository pattern with `@InjectRepository()` (TypeORM) or custom
+  repository class. Service never calls raw query builder directly.
+- Config: `@nestjs/config` + `ConfigService` injected — no `process.env` reads in code.
+
+**Express**
+- Middleware-based: `app.use()` chain for auth/logging/error. Router per feature.
+- DI: manual or `tsyringe`/`inversify` container — constructor injection, no service locators.
+- Error handling: centralized error middleware `(err, req, res, next)` as last middleware.
+  Controllers throw, never `res.status().json()` errors inline.
+- Validation: `joi`, `zod`, or `express-validator` middleware — never validate in handler.
+- Typed request/response: extend `Request` type or use typed wrapper — no `any` on `req.body`.
+
+**Next.js**
+- App Router: `app/` directory, `page.tsx` + `layout.tsx` + `loading.tsx` + `error.tsx`.
+  Server Components by default; `'use client'` only when state/effects needed.
+- Data fetching: `async` Server Components with `fetch()` + revalidation, or Server Actions
+  for mutations. No `useEffect` for data loading.
+- API routes: `app/api/*/route.ts` with typed `NextRequest`/`NextResponse`.
+- Caching: `unstable_cache` / `revalidateTag` / `revalidatePath` — explicit strategy, no
+  implicit stale data.
+
+**Angular**
+- DI: `@Injectable({ providedIn: 'root' })` or module-scoped. Constructor injection only.
+- Reactive: `RxJS` observables in services, `async` pipe in templates — minimal `.subscribe()`.
+- Modules: feature modules with lazy loading (`loadChildren`). Shared module for common components.
+- Forms: Reactive Forms (`FormGroup`, `FormControl`, validators) over Template-driven.
+- HTTP: `HttpClient` via `HttpInterceptor` for auth/error. Never raw `fetch`.
+- State: `NgRx` or `Signal`-based state — no service-level mutable fields as "store."
+
+**React**
+- Components: function components only. Custom hooks for reusable logic.
+- State: `useState`/`useReducer` local; `Zustand`/`Redux Toolkit`/`Jotai` for shared.
+  Never prop-drill more than 2 levels — extract context or state hook.
+- Side effects: `useEffect` with explicit deps, cleanup function for subscriptions.
+  Data fetching via `TanStack Query` / `SWR` — not raw `useEffect + fetch`.
+- Types: props as `type` (not interface), `React.FC` discouraged — use explicit return.
+- Rendering: memoize expensive renders (`React.memo`, `useMemo`, `useCallback`) only
+  when profiler confirms need — no premature optimization.
+
+**Vue**
+- Composition API (`<script setup>`) over Options API. `ref`/`reactive`/`computed`.
+- Composables: extract reusable logic into `use*` functions (equivalent of custom hooks).
+- Routing: `vue-router` with typed route params. Guards for auth.
+- State: `Pinia` stores per feature domain — no global Vuex.
+- Props: `defineProps<T>()` with TypeScript generics — full type safety.
+
+### Java frameworks
+
+**Spring Boot**
+- DI: `@Service`/`@Repository`/`@Controller` stereotypes, constructor injection (single
+  constructor = no `@Autowired` needed). Never field injection.
+- Layering: Controller → Service → Repository. Controller never calls repository directly.
+- Validation: `@Valid` on `@RequestBody` DTO, Bean Validation annotations (`@NotNull`,
+  `@Size`). Never validate in service.
+- Error handling: `@RestControllerAdvice` + `@ExceptionHandler` per domain exception →
+  `ProblemDetail` (RFC 7807). No try/catch in controllers.
+- Data access: Spring Data JPA `JpaRepository` interfaces. Custom queries via `@Query`.
+  Projections for read-only views. `@Transactional` on service methods.
+- Config: `@ConfigurationProperties` bound record/class — no `@Value` scattered in code.
+- Security: Spring Security `SecurityFilterChain` bean — no manual auth checks in methods.
+
+**Quarkus**
+- CDI: `@ApplicationScoped`/`@RequestScoped` beans, constructor injection. `@Inject` only
+  when multiple constructors.
+- Reactive: `Mutiny` (`Uni<T>`/`Multi<T>`) for non-blocking. `@Blocking` for imperative.
+- Data: Panache (`PanacheEntity` active record or `PanacheRepository<T>` pattern).
+- Config: `@ConfigProperty` or SmallRye Config `@ConfigMapping` interface.
+- REST: RESTEasy Reactive annotations, `@ServerExceptionMapper` for error mapping.
+
+**Micronaut**
+- DI: compile-time AOP, `@Singleton`/`@Prototype`, constructor injection. No reflection.
+- HTTP: `@Controller` + `@Get`/`@Post`, `@Body`, `HttpResponse<T>` typed returns.
+- Data: Micronaut Data `@Repository` interfaces with compile-time query generation.
+- Config: `@ConfigurationProperties` or `@EachProperty` for repeatable config.
+
+**Jakarta EE**
+- CDI: `@ApplicationScoped`/`@RequestScoped`, `@Inject` constructor. `@Produces` for factories.
+- REST: JAX-RS `@Path`/`@GET`/`@POST`, `ExceptionMapper<T>` for error mapping.
+- Data: JPA `EntityManager` or repository pattern. `@Transactional` on service.
+- Validation: Bean Validation `@Valid` + constraint annotations on DTOs.
+
+### C# frameworks
+
+**ASP.NET Core**
+- DI: `builder.Services.AddScoped/Transient/Singleton<IService, Service>()`. Constructor
+  injection. Interface per service for testability.
+- Routing: `[ApiController]` + `[Route]` + `[HttpGet]`/`[HttpPost]`. Typed `ActionResult<T>`.
+- Validation: `FluentValidation` or Data Annotations on request DTOs. `[ApiController]`
+  auto-validates — no manual `ModelState` checks.
+- Error handling: global `IExceptionHandler` or middleware. `ProblemDetails` (RFC 7807).
+  Domain exceptions mapped centrally, no try/catch in controllers.
+- Data: EF Core `DbContext` + repository pattern. `IQueryable` projections for reads.
+  `SaveChangesAsync` unit-of-work. Migrations managed.
+- Config: `IOptions<T>` pattern with strongly-typed config classes. No raw `IConfiguration` reads.
+- Middleware: `app.UseAuthentication()` / `app.UseAuthorization()` pipeline — never inline.
+
+**Blazor**
+- Components: `.razor` files, `@inject` for DI, `[Parameter]` for props.
+- State: cascading parameters or `Fluxor`/scoped services — no static mutable state.
+- Forms: `EditForm` + `DataAnnotationsValidator` + `ValidationSummary`.
+
+**.NET MAUI**
+- MVVM: `ViewModel` via `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`).
+  Shell-based navigation. DI via `MauiProgram.CreateMauiApp()`.
+
+**Entity Framework**
+- `DbContext` per unit-of-work, `DbSet<T>` per aggregate root. Owned types for value objects.
+  Fluent API configuration in `IEntityTypeConfiguration<T>`. Migrations via `dotnet ef`.
+  No lazy loading — explicit `Include()` or projection. Always async (`ToListAsync`, etc.).
+
+### Go frameworks
+
+**Gin**
+- Routing: `router.Group()` per feature, `c.JSON()`/`c.ShouldBindJSON()` for typed I/O.
+- Middleware: `gin.HandlerFunc` for auth/logging/recovery. `c.Set()`/`c.Get()` for context values.
+- Error handling: custom `AppError` struct, recovery middleware catches panics → JSON error.
+- DI: manual struct injection (Go has no IoC container) — pass dependencies via constructor functions.
+
+**Echo**
+- Routing: `e.Group()`, `echo.Context` for request/response. `c.Bind()` for typed input.
+- Middleware: `echo.MiddlewareFunc`, built-in `middleware.Logger()`, `middleware.Recover()`.
+- Error handling: `echo.HTTPErrorHandler` centralized. Return `echo.NewHTTPError()`.
+- Validation: `go-playground/validator` with `echo.Validator` interface.
+
+**Fiber**
+- Routing: `app.Group()`, `c.BodyParser()` for typed input. `fiber.Ctx` for context.
+- Middleware: `fiber.Handler`, built-in `logger`, `recover`, `cors`.
+- Error handling: `app.ErrorHandler` centralized. Return `fiber.NewError()`.
+
+**Chi**
+- Routing: `chi.NewRouter()`, `chi.URLParam()` for path params. Standard `http.Handler`.
+- Middleware: `chi.Use()`, compose via `chi.Chain()`. Standard `net/http` middleware compatible.
+- DI: manual struct injection — chi is minimal, no magic.
+
+**Gorilla Mux**
+- Routing: `mux.NewRouter()`, `mux.Vars()` for path params. Standard `http.Handler`.
+- Middleware: `mux.MiddlewareFunc` or standard `http.Handler` wrapping.
+- Note: Gorilla is archived — for new projects recommend Chi or standard library `net/http`.
+
+**Guard rules:**
+- These idioms override generic language conventions when the framework has a specific way.
+- If the repo already uses the framework in a particular style (e.g. field injection despite
+  constructor being recommended), note it in impact notes but follow the framework best practice.
+- When `preferredFramework` is empty or absent, skip this section entirely.
+
 ## 2. Read the queue
 
 Read `<TARGET_ROOT>/.visualise/pending-actions.json` (array of task objects).

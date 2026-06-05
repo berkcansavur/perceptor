@@ -3,6 +3,7 @@ import type { Emitter } from "../Emitter";
 import type { ClassNode } from "../types";
 import type { GraphModel } from "./GraphModel";
 import { byId, escapeHtml, qsa } from "../dom";
+import { t } from "../i18n";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -18,6 +19,11 @@ export class GraphView {
   private readonly nodesLayer = byId("nodes");
   private readonly search = byId<HTMLInputElement>("search");
   private readonly card = byId("graph-card");
+  private readonly scopeBar = byId("scope-bar");
+  private readonly scopeInput = byId<HTMLInputElement>("scope-input");
+  private readonly scopeError = byId("scope-error");
+  private readonly scopeSuggestions = byId("scope-suggestions");
+  private activeSuggestion = -1;
   private animationFrame: number | null = null;
 
   constructor(
@@ -32,6 +38,7 @@ export class GraphView {
     this.setupHover();
     this.setupCard();
     this.setupAutoFit();
+    this.setupScope();
   }
 
   render(): void {
@@ -347,6 +354,130 @@ export class GraphView {
         line.setAttribute("stroke", "#5b6172");
       }
     });
+  }
+
+  setScope(path: string): void {
+    const normalized = path.trim().replace(/\/+$/, "");
+    if (normalized && !this.model.validScope(normalized)) {
+      this.scopeError.textContent = t("scope.invalid");
+      this.scopeError.classList.remove("hidden");
+      return;
+    }
+    this.scopeError.classList.add("hidden");
+    this.state.scopePath = normalized;
+    this.scopeInput.value = normalized;
+    this.scopeBar.classList.toggle("scoped", Boolean(normalized));
+    this.state.userAdjusted = false;
+    this.model.build();
+    this.render();
+  }
+
+  private setupScope(): void {
+    byId("scope-root").addEventListener("click", () => {
+      this.setScope("");
+      this.hideSuggestions();
+    });
+    this.scopeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        if (this.activeSuggestion >= 0) {
+          this.acceptSuggestion();
+        } else {
+          this.setScope(this.scopeInput.value);
+        }
+        this.hideSuggestions();
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        this.moveSuggestion(1);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        this.moveSuggestion(-1);
+        return;
+      }
+      if (event.key === "Escape") {
+        this.hideSuggestions();
+        return;
+      }
+    });
+    this.scopeInput.addEventListener("input", () => this.updateSuggestions());
+    this.scopeInput.addEventListener("blur", () => {
+      // Delay to allow click on suggestion to fire first.
+      setTimeout(() => {
+        this.hideSuggestions();
+        if (this.scopeInput.value.trim() !== this.state.scopePath) {
+          this.setScope(this.scopeInput.value);
+        }
+      }, 150);
+    });
+    this.scopeInput.addEventListener("focus", () => this.updateSuggestions());
+    this.scopeSuggestions.addEventListener("mousedown", (event) => {
+      const item = (event.target as Element | null)?.closest<HTMLElement>(".scope-item");
+      if (item) {
+        this.setScope(item.dataset.dir ?? "");
+        this.hideSuggestions();
+      }
+    });
+    // Double-click a graph node → scope into that folder.
+    this.nodesLayer.addEventListener("dblclick", (event) => {
+      const gnode = (event.target as Element | null)?.closest<HTMLElement>(".gnode");
+      const dir = gnode?.dataset.dir ?? "";
+      if (dir) {
+        this.setScope(dir);
+      }
+    });
+  }
+
+  private updateSuggestions(): void {
+    const query = this.scopeInput.value.trim().toLowerCase();
+    if (!query) {
+      this.hideSuggestions();
+      return;
+    }
+    const allDirs = this.model.allDirs();
+    const matches = [...allDirs]
+      .filter((dir) => dir.toLowerCase().includes(query) && dir !== query)
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(query) ? 0 : 1;
+        const bStarts = b.toLowerCase().startsWith(query) ? 0 : 1;
+        return aStarts - bStarts || a.localeCompare(b);
+      })
+      .slice(0, 8);
+    if (matches.length === 0) {
+      this.hideSuggestions();
+      return;
+    }
+    this.activeSuggestion = -1;
+    this.scopeSuggestions.innerHTML = matches
+      .map((dir) => `<button class="scope-item" data-dir="${escapeHtml(dir)}">${escapeHtml(dir)}</button>`)
+      .join("");
+    this.scopeSuggestions.classList.remove("hidden");
+  }
+
+  private hideSuggestions(): void {
+    this.scopeSuggestions.classList.add("hidden");
+    this.activeSuggestion = -1;
+  }
+
+  private moveSuggestion(delta: number): void {
+    const items = this.scopeSuggestions.querySelectorAll<HTMLElement>(".scope-item");
+    if (items.length === 0) {
+      return;
+    }
+    if (this.activeSuggestion >= 0 && items[this.activeSuggestion]) {
+      items[this.activeSuggestion]!.classList.remove("active");
+    }
+    this.activeSuggestion = Math.max(0, Math.min(items.length - 1, this.activeSuggestion + delta));
+    items[this.activeSuggestion]!.classList.add("active");
+  }
+
+  private acceptSuggestion(): void {
+    const items = this.scopeSuggestions.querySelectorAll<HTMLElement>(".scope-item");
+    if (this.activeSuggestion >= 0 && items[this.activeSuggestion]) {
+      this.setScope(items[this.activeSuggestion]!.dataset.dir ?? "");
+    }
   }
 
   private setupAutoFit(): void {

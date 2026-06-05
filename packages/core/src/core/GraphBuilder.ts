@@ -37,8 +37,8 @@ export class GraphBuilder {
       }
       const relativeFile = path.relative(rootDirectory, filePath).split(path.sep).join("/");
       const language = this.registry.forFile(filePath);
-      const parsedCode = language ? await this.parseCode(language, relativeFile, sourceCode) : null;
-      if (language && parsedCode) {
+      if (language) {
+        const parsedCode = await this.parseCode(language, relativeFile, sourceCode);
         nodes.push(...this.codeNodes(language, relativeFile, parsedCode));
         byLanguage[language.id] = (byLanguage[language.id] ?? 0) + 1;
       } else {
@@ -61,19 +61,25 @@ export class GraphBuilder {
     language: LanguageDefinition,
     relativeFile: string,
     sourceCode: string
-  ): Promise<ParsedCode | null> {
+  ): Promise<ParsedCode> {
     let rootNode;
     try {
       rootNode = await this.parser.parse(language.id, language.wasmPath, sourceCode);
-    } catch {
-      return null;
+    } catch (error) {
+      console.warn(`[GraphBuilder] tree-sitter parse failed for ${relativeFile}:`, error);
+      return { classes: [], moduleBehaviors: [] };
     }
-    const classes = language.extractor.extract(rootNode, relativeFile);
-    const moduleBehaviors =
-      classes.length === 0 && language.extractor.topLevelBehaviors
-        ? language.extractor.topLevelBehaviors(rootNode, relativeFile)
-        : [];
-    return { classes, moduleBehaviors };
+    try {
+      const classes = language.extractor.extract(rootNode, relativeFile);
+      const moduleBehaviors =
+        classes.length === 0 && language.extractor.topLevelBehaviors
+          ? language.extractor.topLevelBehaviors(rootNode, relativeFile)
+          : [];
+      return { classes, moduleBehaviors };
+    } catch (error) {
+      console.warn(`[GraphBuilder] extraction failed for ${relativeFile}:`, error);
+      return { classes: [], moduleBehaviors: [] };
+    }
   }
 
   // A code file's classes, or — when it declares none — a single module node

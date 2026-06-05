@@ -6,6 +6,16 @@ import { t } from "../i18n";
 import { usageBadge } from "../usageBadge";
 import { fromBehavior, fromClass, fromDir, specDescription, specName, toClass } from "../taskView";
 
+const TYPE_LABEL: Readonly<Record<string, string>> = {
+  "add-behavior": "add",
+  "edit-behavior": "edit",
+  "move-behavior": "move",
+  "create-file": "file",
+  "create-folder": "folder",
+  request: "request",
+  "describe-behavior": "explain",
+};
+
 // The Tasks drawer: renders the queue, polls for changes, and handles
 // approve/reject/cancel/dismiss/chat + drag-to-move enqueue.
 export class TasksPanel {
@@ -317,8 +327,10 @@ export class TasksPanel {
     const replyInput = isDescribe
       ? ""
       : `<input class="task-chat" data-chat="${task.id}" placeholder="${t("task.chat")}" />`;
+    const typeLabel = TYPE_LABEL[task.type] ?? task.type;
     return `<div class="task-card${isDone ? " task-done collapsed" : ""}" data-id="${task.id}">
       <div class="task-head">
+        <span class="task-type-badge">${escapeHtml(typeLabel)}</span>
         <span class="status-badge status-${task.status}">${t("status." + task.status)}</span>
         ${
           task.lock
