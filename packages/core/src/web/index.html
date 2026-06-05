@@ -30,6 +30,12 @@
     </header>
 
     <main id="viewport">
+      <div id="scope-bar">
+        <button id="scope-root" title="Root">⌂</button>
+        <input id="scope-input" type="text" data-i18n-placeholder="scope.placeholder" placeholder="e.g. src/services" autocomplete="off" />
+        <span id="scope-error" class="hidden"></span>
+        <div id="scope-suggestions" class="hidden"></div>
+      </div>
       <div id="world">
         <svg id="edges"></svg>
         <div id="nodes"></div>

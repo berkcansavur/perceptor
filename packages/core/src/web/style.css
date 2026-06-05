@@ -138,6 +138,96 @@ button:hover {
   cursor: grabbing;
 }
 
+#scope-bar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+#scope-bar:hover,
+#scope-bar:focus-within {
+  opacity: 1;
+}
+#scope-bar.scoped {
+  border-color: var(--accent);
+  opacity: 1;
+}
+#scope-root {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+#scope-root:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+#scope-input {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  width: 180px;
+  outline: none;
+}
+#scope-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+#scope-error {
+  color: #e0607a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+#scope-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 34px;
+  margin-top: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  min-width: 200px;
+  z-index: 30;
+}
+#scope-suggestions .scope-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  padding: 5px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+#scope-suggestions .scope-item:hover,
+#scope-suggestions .scope-item.active {
+  background: rgba(106, 161, 255, 0.12);
+  color: var(--accent);
+}
+
 #world {
   position: absolute;
   top: 0;
@@ -352,11 +442,29 @@ button:hover {
   transform: translateY(1px);
 }
 
+.vis-badge {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+}
+
 .vis-public { background: var(--field); }
 .vis-protected { background: var(--enum); }
 .vis-private { background: #e0607a; }
 .vis-internal { background: var(--record); }
 .vis-package { background: var(--muted); }
+
+.vis-badge.vis-public { background: rgba(75, 180, 100, 0.15); color: var(--field); }
+.vis-badge.vis-protected { background: rgba(200, 160, 50, 0.15); color: var(--enum); }
+.vis-badge.vis-private { background: rgba(224, 96, 122, 0.15); color: #e0607a; }
+.vis-badge.vis-internal { background: rgba(140, 120, 200, 0.15); color: var(--record); }
+.vis-badge.vis-package { background: rgba(140, 140, 140, 0.15); color: var(--muted); }
 
 .behavior-sig {
   font-family: "SF Mono", ui-monospace, Menlo, monospace;
@@ -1076,8 +1184,26 @@ body.tasks-open #behavior-drawer {
 .task-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
   margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.task-head .usage-chip {
+  order: 10;
+  flex-basis: 100%;
+  margin-top: 2px;
+}
+.task-type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(106, 161, 255, 0.12);
+  color: var(--accent);
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .task-done > .task-head {
@@ -1561,6 +1687,30 @@ body.tasks-open #behavior-drawer {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+.conv-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.conv-archive {
+  flex-shrink: 0;
+  opacity: 0;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: opacity 0.15s;
+}
+
+.conv-item:hover .conv-archive {
+  opacity: 0.5;
+}
+
+.conv-archive:hover {
+  opacity: 1 !important;
+}
+
 .conv-title {
   font-size: 12px;
   line-height: 1.35;
@@ -1708,19 +1858,6 @@ body.tasks-open #behavior-drawer {
   gap: 8px;
 }
 
-.chat-archive {
-  margin-left: auto;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  opacity: 0.5;
-  padding: 0 4px;
-}
-
-.chat-archive:hover {
-  opacity: 1;
-}
 
 .chat-reply {
   width: 100%;

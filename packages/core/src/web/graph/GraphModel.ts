@@ -15,10 +15,14 @@ const ALPHA_REHEAT = 0.7;
 const VELOCITY_DECAY = 0.6;
 const REPULSION = 2600;
 const MAX_REPULSION = 220;
-const LINK_DISTANCE = 170;
-const LINK_STRENGTH = 0.08;
+const LINK_DISTANCE = 150;
+const LINK_STRENGTH = 0.12;
 const GRAVITY = 0.016;
 const COLLIDE_PAD = 28;
+// Subtree clustering: siblings (children of the same parent) attract each other
+// so related folders visually group together instead of scattering.
+const SIBLING_ATTRACTION = 0.04;
+const SIBLING_DISTANCE = 100;
 
 type Velocity = {
   vx: number;
@@ -35,15 +39,23 @@ export class GraphModel {
   constructor(private readonly state: AppState) {}
 
   build(): void {
+    const scope = this.state.scopePath;
     const classesByDir = new Map<string, ClassNode[]>();
     for (const node of this.state.nodes) {
+      if (scope && !this.isUnderScope(node.dir, scope)) {
+        continue;
+      }
       (classesByDir.get(node.dir) ?? this.put(classesByDir, node.dir)).push(node);
     }
 
     const dirs = new Set<string>();
     const addWithAncestors = (dir: string): void => {
+      if (scope && !this.isUnderScope(dir, scope)) {
+        return;
+      }
       const parts = dir.split("/").filter(Boolean);
-      for (let depth = 1; depth <= parts.length; depth++) {
+      const scopeDepth = scope ? scope.split("/").filter(Boolean).length : 0;
+      for (let depth = Math.max(1, scopeDepth); depth <= parts.length; depth++) {
         dirs.add(parts.slice(0, depth).join("/"));
       }
     };
@@ -101,6 +113,36 @@ export class GraphModel {
     return list;
   }
 
+  // All known directory paths (before scope filtering). Used by the scope bar
+  // to validate user input and by double-click-to-scope.
+  allDirs(): ReadonlySet<string> {
+    const dirs = new Set<string>();
+    for (const node of this.state.nodes) {
+      const parts = node.dir.split("/").filter(Boolean);
+      for (let depth = 1; depth <= parts.length; depth++) {
+        dirs.add(parts.slice(0, depth).join("/"));
+      }
+    }
+    for (const dir of this.state.directories) {
+      const parts = dir.split("/").filter(Boolean);
+      for (let depth = 1; depth <= parts.length; depth++) {
+        dirs.add(parts.slice(0, depth).join("/"));
+      }
+    }
+    return dirs;
+  }
+
+  validScope(path: string): boolean {
+    if (!path) {
+      return true;
+    }
+    return this.allDirs().has(path);
+  }
+
+  private isUnderScope(dir: string, scope: string): boolean {
+    return dir === scope || dir.startsWith(scope + "/");
+  }
+
   private parentOf(dir: string): string | null {
     const segments = dir.split("/").filter(Boolean);
     return segments.length <= 1 ? null : segments.slice(0, -1).join("/");
@@ -150,44 +192,41 @@ export class GraphModel {
     const position = this.state.position;
     this.applyRepulsion(nodes, position);
     this.applyLinks(position);
+    this.applySiblingClustering(position);
     this.applyGravity(nodes, position);
     this.integrate(nodes, position);
     this.alpha *= ALPHA_DECAY;
     return this.alpha > ALPHA_MIN;
   }
 
-  // All-pairs n-body repulsion. This is inherently O(pairs) — every node pushes every
-  // other — so it's quadratic by algorithm, not by accident; a quadtree (Barnes-Hut)
-  // is the only way to make it sub-quadratic. It runs over FOLDER nodes (few), once
-  // per cooled tick, so it stays cheap. Expressed as a single pass over unique pairs.
+  // All-pairs n-body repulsion — O(n²) by nature (quadtree is the only sub-quadratic
+  // option). Inline loop avoids the temporary array allocation that `uniquePairs` caused
+  // every tick, cutting GC pressure significantly for large graphs.
   private applyRepulsion(nodes: readonly FolderNode[], position: Map<string, Point>): void {
-    this.uniquePairs(nodes).forEach(([a, b]) => this.repel(a, b, position));
-  }
-
-  // Each unordered pair once (i < j).
-  private uniquePairs(nodes: readonly FolderNode[]): [FolderNode, FolderNode][] {
-    return nodes.flatMap((a, index) => nodes.slice(index + 1).map((b) => [a, b] as [FolderNode, FolderNode]));
-  }
-
-  private repel(a: FolderNode, b: FolderNode, position: Map<string, Point>): void {
-    const pa = position.get(a.dir)!;
-    const pb = position.get(b.dir)!;
-    const dx = pa.x - pb.x;
-    const dy = pa.y - pb.y;
-    const distance = Math.sqrt(dx * dx + dy * dy) || 0.01;
-    let force = Math.min(MAX_REPULSION, REPULSION / distance);
-    const minDistance = a.radius + b.radius + COLLIDE_PAD;
-    if (distance < minDistance) {
-      force += (minDistance - distance) * 0.5;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i]!;
+      const pa = position.get(a.dir)!;
+      const va = this.velocities.get(a.dir)!;
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j]!;
+        const pb = position.get(b.dir)!;
+        const dx = pa.x - pb.x;
+        const dy = pa.y - pb.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        let force = Math.min(MAX_REPULSION, REPULSION / distance);
+        const minDistance = a.radius + b.radius + COLLIDE_PAD;
+        if (distance < minDistance) {
+          force += (minDistance - distance) * 0.5;
+        }
+        const ux = (dx / distance) * force * this.alpha;
+        const uy = (dy / distance) * force * this.alpha;
+        const vb = this.velocities.get(b.dir)!;
+        va.vx += ux;
+        va.vy += uy;
+        vb.vx -= ux;
+        vb.vy -= uy;
+      }
     }
-    const ux = (dx / distance) * force * this.alpha;
-    const uy = (dy / distance) * force * this.alpha;
-    const va = this.velocities.get(a.dir)!;
-    const vb = this.velocities.get(b.dir)!;
-    va.vx += ux;
-    va.vy += uy;
-    vb.vx -= ux;
-    vb.vy -= uy;
   }
 
   private applyLinks(position: Map<string, Point>): void {
@@ -209,6 +248,48 @@ export class GraphModel {
       velocityA.vy += forceY;
       velocityB.vx -= forceX;
       velocityB.vy -= forceY;
+    }
+  }
+
+  // Siblings (children of the same parent) gently attract each other so subtrees
+  // cluster visually rather than scattering across the layout.
+  private applySiblingClustering(position: Map<string, Point>): void {
+    const adjacency = this.state.adjacency;
+    const visited = new Set<string>();
+    for (const [parent, neighbors] of adjacency) {
+      const children = [...neighbors].filter((neighbor) => this.parentOf(neighbor) === parent);
+      if (children.length < 2) {
+        continue;
+      }
+      const key = parent;
+      if (visited.has(key)) {
+        continue;
+      }
+      visited.add(key);
+      for (let i = 0; i < children.length; i++) {
+        for (let j = i + 1; j < children.length; j++) {
+          const pointA = position.get(children[i]!);
+          const pointB = position.get(children[j]!);
+          const velocityA = this.velocities.get(children[i]!);
+          const velocityB = this.velocities.get(children[j]!);
+          if (!pointA || !pointB || !velocityA || !velocityB) {
+            continue;
+          }
+          const deltaX = pointB.x - pointA.x;
+          const deltaY = pointB.y - pointA.y;
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) || 0.01;
+          if (distance < SIBLING_DISTANCE) {
+            continue;
+          }
+          const force = (distance - SIBLING_DISTANCE) * SIBLING_ATTRACTION * this.alpha;
+          const forceX = (deltaX / distance) * force;
+          const forceY = (deltaY / distance) * force;
+          velocityA.vx += forceX;
+          velocityA.vy += forceY;
+          velocityB.vx -= forceX;
+          velocityB.vy -= forceY;
+        }
+      }
     }
   }
 

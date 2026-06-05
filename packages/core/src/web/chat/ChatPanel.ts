@@ -88,6 +88,11 @@ export class ChatPanel {
       this.startNewChat();
       return;
     }
+    const archiveButton = closestEl<HTMLElement>(event.target, "[data-list-archive]");
+    if (archiveButton) {
+      void this.archive(archiveButton.dataset.listArchive ?? "");
+      return;
+    }
     const conversationItem = closestEl<HTMLElement>(event.target, "[data-conv]");
     if (conversationItem) {
       this.selectedId = conversationItem.dataset.conv ?? null;
@@ -149,11 +154,6 @@ export class ChatPanel {
     const reject = closestEl<HTMLElement>(event.target, "[data-reject]");
     if (reject) {
       void this.setStatus(reject.dataset.reject ?? "", "rejected");
-      return;
-    }
-    const archive = closestEl<HTMLElement>(event.target, "[data-archive]");
-    if (archive) {
-      void this.archive(archive.dataset.archive ?? "");
       return;
     }
     const stopEl = closestEl<HTMLElement>(event.target, "[data-stop]");
@@ -416,8 +416,9 @@ export class ChatPanel {
   private renderListItem(request: Task): string {
     const title = this.conversationTitle(request);
     const active = request.id === this.selectedId ? " active" : "";
+    const archiveButton = `<span class="conv-archive" data-list-archive="${request.id}" title="${t("chat.archive")}">📥</span>`;
     return `<button class="conv-item${active}" data-conv="${request.id}">
-      <span class="conv-title">${escapeHtml(title)}</span>
+      <span class="conv-header"><span class="conv-title">${escapeHtml(title)}</span>${archiveButton}</span>
       <span class="conv-meta">${this.listMeta(request)}</span>
     </button>`;
   }
@@ -463,10 +464,6 @@ export class ChatPanel {
     return Boolean(last && last.role === "user");
   }
 
-  private isResolved(task: Task): boolean {
-    return !task.lock && ["applied", "rejected", "error"].includes(task.status);
-  }
-
   private renderThread(request: Task): string {
     const description = specDescription(request);
     const promptText = request.type === "request" ? description : this.conversationTitle(request);
@@ -495,7 +492,6 @@ export class ChatPanel {
         ${request.lock ? "" : `<span class="status-badge status-${request.status}">${t("status." + request.status)}</span>`}
         ${this.liveChip(request)}
         ${changesLink}
-        ${this.isResolved(request) ? `<button class="chat-archive" data-archive="${request.id}" title="${t("chat.archive")}">📥</button>` : ""}
       </div>
       <div class="chat-activity hidden" data-activity-for="${request.id}"></div>
       ${actions}

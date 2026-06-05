@@ -18,6 +18,9 @@ export class AppState {
   userAdjusted = false;
   hostRoot: string | null = null;
   searchQuery = "";
+  // Graph scope: when set, only folders under this path are rendered.
+  // Empty string means root (show everything).
+  scopePath = "";
   // Node kinds the folder view currently hides (toggled off via the kind-filter chips).
   // Empty means everything is shown.
   hiddenKinds = new Set<string>();

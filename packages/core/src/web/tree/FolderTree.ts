@@ -191,7 +191,7 @@ export class FolderTree {
                 behavior.name
               )}" data-line="${behavior.line || 0}" data-endline="${behavior.endLine || 0}" data-signature="${escapeHtml(
                 this.behaviorSignaturePlain(behavior)
-              )}"><span class="vis-dot vis-${behavior.visibility}"></span><span class="behavior-sig">${this.behaviorSignature(
+              )}"><span class="vis-badge vis-${behavior.visibility}">${behavior.visibility}</span><span class="behavior-sig">${this.behaviorSignature(
                 behavior
               )}</span></div>`
           )

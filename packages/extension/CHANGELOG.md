@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-05
+
+### Added
+- **Graph scope filter**: scope bar with editable path input + root (⌂) button to focus
+  on a subtree. VS Code-style autocomplete suggestions, double-click a node to scope into
+  its folder.
+- **Sibling clustering**: children of the same parent attract each other so related folders
+  visually group together instead of scattering across the layout.
+- **Access modifier badge**: method visibility now shown as a colored text badge
+  (public/private/protected/internal/package) instead of a dot — all languages supported.
+- **Task type badge**: each task in the Tasks panel shows a type label (add, edit, move,
+  request, file, folder, explain) at the head of its card.
+- **Sidebar archive button**: hover any chat in the left sidebar to reveal an archive (📥)
+  button — the old in-thread archive button has been removed.
+- **Code smell detection (SKILL.md §1d)**: 8 language-agnostic smell rules (Strategy,
+  Template Method, Factory, SRP, Primitive obsession, Feature envy, Long parameter list,
+  Code duplication) with concrete TypeScript before→after examples.
+- **Framework-specific idioms (SKILL.md §1e)**: mandatory mechanics for 20 frameworks
+  (NestJS, Express, Spring Boot, ASP.NET Core, Gin, and more).
+
+### Fixed
+- **Silent tree-sitter parse failure**: recognized-language files no longer fall back to
+  "file" kind — parse/extract failures return empty `ParsedCode` and log a warning.
+- **Token usage overflow**: task-head now wraps with `flex-wrap`, usage chip drops to its
+  own line instead of overflowing.
+- **Dead CSS cleanup**: removed `.chat-archive` CSS rules left over after the in-thread
+  archive button was removed.
+
 ## [0.3.0] - 2026-06-03
 
 ### Added
@@ -87,7 +115,8 @@ Initial release.
   grammars/webview assets, so it installs and runs on any machine with no `npm install`
   and no local server. Everything runs locally with your own Claude tokens.
 
-[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/berkcansavur/perceptor/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/berkcansavur/perceptor/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/berkcansavur/perceptor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/berkcansavur/perceptor/releases/tag/v0.1.0
