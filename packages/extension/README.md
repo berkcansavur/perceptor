@@ -16,6 +16,16 @@ each method — rendered right inside VS Code.
   and what it returns.
 - **Explain** — ask your own local Claude for a complete plain-English explanation of a
   method, inline in its detail panel.
+- **Chat** — describe a change in plain language and Claude proposes it with
+  impact analysis. Each conversation has its own thread; edit any sent message
+  to re-run from that point.
+- **@ File references** — type `@` in chat to get an autocomplete popup of
+  project files; selected files are included as context for Claude.
+- **Inline Edit (`Cmd+Shift+I`)** — select code in the editor, press the
+  shortcut, and a Perceptor chat thread opens right next to the selected lines
+  (via VS Code's CommentController API). Describe what you want; Claude proposes
+  a diff. Buttons adapt to the current state: Submit, Stop, Attach File, Remove
+  Attached File, View in Chat, and Close.
 - **Change tasks** — add / move / edit a behavior or create files & folders from
   the map; the work is carried out by *your own* local Claude. No server, no
   hosted backend, your tokens.
@@ -33,6 +43,10 @@ each method — rendered right inside VS Code.
 **Explain** — ask your own local Claude about a method, inline:
 
 ![Chat](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/screenshots/chat.png)
+
+**Inline Edit** — select code, press `Cmd+Shift+I`, and edit right in the editor:
+
+![Inline Edit](https://raw.githubusercontent.com/berkcansavur/perceptor/master/packages/extension/media/inline-edit-preview.png)
 
 **Change tasks** — review and apply changes carried out by your local Claude:
 
@@ -89,6 +103,9 @@ npm run package        # → packages/extension/perceptor-<version>.vsix
    type to open it in the editor.
 4. In Folder mode, click a behavior to open its detail panel — complexity, data-access
    risk, the Simulate-flow storyboard (press **Run**), and **Explain**.
+5. **Inline Edit** — select code in the editor and press `Cmd+Shift+I` to open a
+   chat thread right next to it. Describe your change, submit, and review the
+   proposed diff in the Changes tab.
 
 The map refreshes automatically as files change.
 
@@ -99,6 +116,7 @@ The map refreshes automatically as files change.
 | TypeScript / TSX | class, interface, enum, type alias, exported const |
 | Java | class, interface, enum, record, annotation (`@interface`) |
 | C# | class, interface, enum, struct, record, delegate |
+| Go | struct, interface (receiver methods, channel/pointer/slice/map unwrap) |
 
 ## Settings
 
