@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-06
+
+### Added
+- **Inline Edit (`Cmd+Shift+I`)**: select code in the editor and press the
+  shortcut to open a Perceptor chat thread right next to the selected lines —
+  built on the VS Code CommentController API. Selected lines are highlighted
+  with a blue accent border (`#6aa1ff`).
+- **Inline Edit buttons**: Submit, Stop, Close, Attach File, Remove Attached
+  File, View in Chat — each shown/hidden based on the current process state
+  via context keys.
+- **Inline Edit animation**: `⚡ Percepting...` text-only animation with no
+  flicker or restart glitches.
+- **@ file reference (inline)**: type `@filename.ts` in the inline reply box
+  and submit — the name is resolved to its full graph path via tail-match
+  (`resolveToGraphPath`). Files can also be attached via the Attach File
+  QuickPick button.
+- **@ file reference (chat)**: type `@` in the main chat to get an
+  autocomplete popup; navigate with arrow keys, select with Tab/Enter.
+- **View in Chat navigation**: clicking View in Chat from the inline thread
+  opens the corresponding task's conversation in the Perceptor panel
+  (`VisualiserPanel.selectChat → chat:select`).
+- **Remove Attached File**: `$(trash)` icon to remove attached files; removes
+  directly when there is one file, shows a QuickPick when there are multiple.
+
 ## [0.4.1] - 2026-06-05
 
 ### Fixed
@@ -122,7 +146,8 @@ Initial release.
   grammars/webview assets, so it installs and runs on any machine with no `npm install`
   and no local server. Everything runs locally with your own Claude tokens.
 
-[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/berkcansavur/perceptor/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/berkcansavur/perceptor/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/berkcansavur/perceptor/compare/v0.3.1...v0.4.1
 [0.3.1]: https://github.com/berkcansavur/perceptor/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/berkcansavur/perceptor/compare/v0.2.0...v0.3.0

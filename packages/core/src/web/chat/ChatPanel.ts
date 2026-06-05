@@ -8,6 +8,7 @@ import { roleLabel } from "./roleLabel";
 import { renderMarkdown, setupCodeCopyHandlers } from "./MarkdownRenderer";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { ImageAttachment } from "./ImageAttachment";
+import { FileReferenceMention } from "./FileReferenceMention";
 
 const REFRESH_MS = 2000;
 const ACTIVITY_MS = 1000;
@@ -23,6 +24,7 @@ export class ChatPanel {
   private readonly list = byId("chat-list");
   private readonly thread = byId("chat-thread");
   private slashMenu: SlashCommandMenu | null = null;
+  private fileMention: FileReferenceMention | null = null;
   private imageAttachment: ImageAttachment | null = null;
   private lastJson: string | null = null;
   private rendered: Task[] = [];
@@ -48,10 +50,14 @@ export class ChatPanel {
     this.slashMenu = new SlashCommandMenu(input, this.api, () => {
       // Skill selected — user continues typing args in the input
     });
+    this.fileMention = new FileReferenceMention(input, this.api);
     this.imageAttachment = new ImageAttachment(input, composer, this.api, byId("chat-main"));
 
     input.addEventListener("keydown", (event) => {
       if (this.slashMenu?.handleKeydown(event)) {
+        return;
+      }
+      if (this.fileMention?.handleKeydown(event)) {
         return;
       }
       if (event.key === "Enter" && !event.shiftKey) {
@@ -62,6 +68,7 @@ export class ChatPanel {
     input.addEventListener("input", () => {
       this.autoGrow(input);
       void this.slashMenu?.handleInput();
+      void this.fileMention?.handleInput();
     });
     byId("chat-hint").addEventListener("click", (event) => {
       const copy = closestEl<HTMLElement>(event.target, "[data-copy-cmd]");

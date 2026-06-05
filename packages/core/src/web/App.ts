@@ -80,6 +80,7 @@ export class App {
       void this.chatPanel.refresh(true);
       void this.changesView.refresh(true);
     });
+    this.listenHostPush();
     this.setupAutoRefresh();
     void this.syncLocale();
     void this.loadGraph();
@@ -102,6 +103,15 @@ export class App {
     // that file directly and, when it's missing, falls back to guessing the language — which
     // is how an English UI ended up with Turkish Claude output. Writing it pins the choice.
     void this.api.setLocale(getCurrentLang());
+  }
+
+  private listenHostPush(): void {
+    window.addEventListener("message", (event: MessageEvent) => {
+      const message = event.data as { type?: string; taskId?: string };
+      if (message?.type === "selectChat" && message.taskId) {
+        this.bus.emit("chat:select", message.taskId);
+      }
+    });
   }
 
   private wireBus(): void {

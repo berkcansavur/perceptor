@@ -2,7 +2,7 @@
   "name": "perceptor",
   "displayName": "Perceptor",
   "description": "Perceptor X-rays your repository: an interactive dependency & behavior map plus per-method analysis — Big-O complexity and N+1 / SQL-ORM query risk — with optional Claude-powered edits that use your own local Claude CLI and tokens.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "publisher": "berkcansavur",
   "author": "Berkcan Şavur",
   "license": "MIT",
@@ -48,6 +48,85 @@
         "command": "perceptor.open",
         "title": "Open",
         "category": "Perceptor"
+      },
+      {
+        "command": "perceptor.inlineEdit",
+        "title": "Inline Edit",
+        "category": "Perceptor"
+      },
+      {
+        "command": "perceptor.submitInlineEdit",
+        "title": "Submit",
+        "icon": "$(send)"
+      },
+      {
+        "command": "perceptor.closeInlineEdit",
+        "title": "Close",
+        "icon": "$(close)"
+      },
+      {
+        "command": "perceptor.attachFileInlineEdit",
+        "title": "Attach File",
+        "icon": "$(file-add)"
+      },
+      {
+        "command": "perceptor.stopInlineEdit",
+        "title": "Stop",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "perceptor.viewInChat",
+        "title": "View in Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "perceptor.removeAttachedFileInlineEdit",
+        "title": "Remove Attached File",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "comments/commentThread/context": [
+        {
+          "command": "perceptor.submitInlineEdit",
+          "group": "inline",
+          "when": "commentController == perceptor-inline && !perceptor.inlineProcessing"
+        },
+        {
+          "command": "perceptor.attachFileInlineEdit",
+          "group": "inline",
+          "when": "commentController == perceptor-inline && !perceptor.inlineProcessing"
+        },
+        {
+          "command": "perceptor.removeAttachedFileInlineEdit",
+          "group": "inline",
+          "when": "commentController == perceptor-inline && !perceptor.inlineProcessing && perceptor.inlineHasAttachments"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "perceptor.viewInChat",
+          "group": "inline",
+          "when": "commentController == perceptor-inline && perceptor.inlineHasTask"
+        },
+        {
+          "command": "perceptor.stopInlineEdit",
+          "group": "inline",
+          "when": "commentController == perceptor-inline && perceptor.inlineProcessing"
+        },
+        {
+          "command": "perceptor.closeInlineEdit",
+          "group": "inline",
+          "when": "commentController == perceptor-inline"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "perceptor.inlineEdit",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+shift+i",
+        "when": "editorTextFocus && editorHasSelection"
       }
     ],
     "configuration": {

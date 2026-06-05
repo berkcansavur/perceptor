@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { createCoreService, CoreService, type AnalyzerAssets, type FileOpener } from "perceptor-core/dist/service";
 import { VisualiserPanel } from "./visualiserPanel";
 import { provisionSkill } from "./provisionSkill";
+import { InlineEditController } from "./InlineEditController";
 
 // The host capability the core can't provide: reveal a file in the editor at a line.
 // The core resolves the repo-relative path to an absolute one before calling this.
@@ -16,6 +17,7 @@ const editorFileOpener: FileOpener = {
 
 let output: vscode.OutputChannel;
 let core: CoreService | undefined;
+let inlineEdit: InlineEditController | undefined;
 
 // The bundle and its assets ship together: extension.js sits in dist/, so the webview
 // build and the tree-sitter .wasm files are resolved relative to it (__dirname), never
@@ -70,6 +72,62 @@ export function activate(context: vscode.ExtensionContext): void {
   output = vscode.window.createOutputChannel("Perceptor");
   context.subscriptions.push(output);
   context.subscriptions.push(vscode.commands.registerCommand("perceptor.open", openCommand));
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.inlineEdit", () => {
+      if (!core) {
+        vscode.window.showWarningMessage("Perceptor: open Perceptor first (Cmd+Shift+P \u2192 Perceptor: Open).");
+        return;
+      }
+      if (!inlineEdit) {
+        inlineEdit = new InlineEditController(core);
+        inlineEdit.setViewInChatCallback((taskId) => {
+          VisualiserPanel.selectChat(taskId);
+        });
+        context.subscriptions.push({ dispose: () => inlineEdit?.dispose() });
+      }
+      inlineEdit.run();
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.submitInlineEdit", (reply: vscode.CommentReply) => {
+      if (inlineEdit) {
+        void inlineEdit.handleReply(reply);
+      }
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.closeInlineEdit", () => {
+      inlineEdit?.close();
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.attachFileInlineEdit", () => {
+      if (inlineEdit) {
+        void inlineEdit.attachFile();
+      }
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.stopInlineEdit", () => {
+      if (inlineEdit) {
+        void inlineEdit.stopProcessing();
+      }
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.removeAttachedFileInlineEdit", () => {
+      if (inlineEdit) {
+        void inlineEdit.removeAttachedFile();
+      }
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.viewInChat", () => {
+      if (inlineEdit) {
+        inlineEdit.viewInChat();
+      }
+    })
+  );
 
   // Install the /visualise Claude skill (the task-processing engine) onto this machine
   // so the extension works with zero per-user setup. Idempotent — a no-op once installed.
@@ -84,5 +142,7 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
+  inlineEdit?.dispose();
+  inlineEdit = undefined;
   core = undefined;
 }

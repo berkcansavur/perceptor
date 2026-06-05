@@ -14,6 +14,13 @@ It also lets you queue change requests from the map (add / move / edit a
 behavior, create a file or folder) and have them carried out by your **own**
 local Claude — no server, no hosted backend, your tokens.
 
+- **Chat** — describe a change in plain language and Claude proposes it with
+  impact analysis. Each conversation has its own thread; edit any sent message
+  to re-run from that point. Use `@` to reference files inline.
+- **Inline Edit (`Cmd+Shift+I`)** — select code in the editor, press the
+  shortcut, and a chat thread opens right next to the selected lines. Describe
+  what you want changed; Claude proposes a diff you review in the Changes tab.
+
 > No HTTP server, no localhost, no browser. The UI runs in a VS Code webview and
 > talks to the extension host over the webview message channel.
 
@@ -47,6 +54,7 @@ without it.
 | TypeScript / TSX | class, interface, enum, **type alias**, **exported const** |
 | Java | class, interface, enum, record, **annotation (`@interface`)** |
 | C# | class, interface, enum, struct, record, **delegate** |
+| Go | struct, interface (receiver methods, channel/pointer/slice/map unwrap) |
 
 Adding a language is localized (Open/Closed): register it in
 `packages/core/src/core/LanguageRegistry.ts` and add an extractor under

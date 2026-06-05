@@ -40,6 +40,14 @@ export class VisualiserPanel {
     VisualiserPanel.current = new VisualiserPanel(core, webDirectory);
   }
 
+  static selectChat(taskId: string): void {
+    if (!VisualiserPanel.current) {
+      return;
+    }
+    VisualiserPanel.current.panel.reveal(vscode.ViewColumn.One);
+    void VisualiserPanel.current.panel.webview.postMessage({ type: "selectChat", taskId });
+  }
+
   // Every action — including openFile — flows through core.dispatch, which always
   // answers with an ApiResponse envelope (its funnel maps any failure), so the host
   // just forwards the result. The editor work for openFile is the FileOpener the
