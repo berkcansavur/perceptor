@@ -1,9 +1,10 @@
-import type { ClassNode, Edge, FolderNode, FolderEdge, Point, ViewMode } from "../types";
+import type { ClassNode, ClassDebugReport, Edge, FolderNode, FolderEdge, Point, ViewMode } from "../types";
 
 // Single source of truth for the loaded graph + current view state.
 export class AppState {
   nodes: readonly ClassNode[] = [];
   edges: readonly Edge[] = [];
+  debugReadiness = new Map<string, ClassDebugReport>();
   directories: readonly string[] = [];
   nodeById = new Map<string, ClassNode>();
 

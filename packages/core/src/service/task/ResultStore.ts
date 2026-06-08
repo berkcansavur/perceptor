@@ -57,14 +57,14 @@ function normalize(raw: Record<string, unknown>): RunResult | null {
   }
 }
 
-// Per-task run outcomes live in .visualise/results/<id>.json. Each headless run owns
+// Per-task run outcomes live in .perceptor/results/<id>.json. Each headless run owns
 // exactly one such file, so concurrent runs never write the same file — the host
 // reads + deletes it and is the only writer of the shared queue.
 export class ResultStore {
   constructor(private readonly rootProvider: () => string) {}
 
   private dir(): string {
-    return path.join(this.rootProvider(), ".visualise", "results");
+    return path.join(this.rootProvider(), ".perceptor", "results");
   }
 
   private file(taskId: string): string {

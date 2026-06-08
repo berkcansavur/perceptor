@@ -28,3 +28,7 @@ export { BehaviorSummaryCommand } from "./BehaviorSummaryCommand";
 export { UploadAttachmentCommand } from "./UploadAttachmentCommand";
 export { ListSkillsCommand } from "./ListSkillsCommand";
 export { ReadAttachmentCommand } from "./ReadAttachmentCommand";
+export { SimulateCommand } from "./SimulateCommand";
+export { GenerateDebugRunnerCommand } from "./GenerateDebugRunnerCommand";
+export { AnalyzeDebugReadinessCommand } from "./AnalyzeDebugReadinessCommand";
+export { GenerateTestScaffoldCommand } from "./GenerateTestScaffoldCommand";

@@ -28,7 +28,7 @@ describe("CodingPreferencesStore", () => {
     store.save({ ...DEFAULT_CODING_PREFERENCES, primaryLanguage: "java" });
 
     expect(store.read().primaryLanguage).toBe("java");
-    expect(fs.existsSync(path.join(root, ".visualise", "coding-preferences.json"))).toBe(true);
+    expect(fs.existsSync(path.join(root, ".perceptor", "coding-preferences.json"))).toBe(true);
   });
 
   it("merges a partial save over the defaults", () => {
@@ -40,7 +40,7 @@ describe("CodingPreferencesStore", () => {
   });
 
   it("fills missing sections with defaults when reading a stale file", () => {
-    const file = path.join(root, ".visualise", "coding-preferences.json");
+    const file = path.join(root, ".perceptor", "coding-preferences.json");
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ primaryLanguage: "csharp" }));
 
@@ -50,7 +50,7 @@ describe("CodingPreferencesStore", () => {
   });
 
   it("falls back to defaults on malformed json", () => {
-    const file = path.join(root, ".visualise", "coding-preferences.json");
+    const file = path.join(root, ".perceptor", "coding-preferences.json");
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, "{ not json");
 

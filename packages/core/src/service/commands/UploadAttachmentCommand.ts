@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { Command } from "./Command";
 import type { ApiRequest } from "../types";
-import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
+import { ensurePerceptorIgnored } from "../../core/ensurePerceptorIgnored";
 
 export class UploadAttachmentCommand extends Command<ApiRequest["uploadAttachment"], { path: string }> {
   readonly action = "uploadAttachment";
@@ -20,8 +20,8 @@ export class UploadAttachmentCommand extends Command<ApiRequest["uploadAttachmen
 
   protected run(request: ApiRequest["uploadAttachment"]): { path: string } {
     const root = this.rootProvider();
-    const attachmentsDir = path.join(root, ".visualise", "attachments");
-    ensureVisualiseIgnored(root);
+    const attachmentsDir = path.join(root, ".perceptor", "attachments");
+    ensurePerceptorIgnored(root);
     fs.mkdirSync(attachmentsDir, { recursive: true });
     const safeName = request.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const fileName = `${Date.now()}-${safeName}`;
@@ -30,6 +30,6 @@ export class UploadAttachmentCommand extends Command<ApiRequest["uploadAttachmen
     const base64Data = base64Match && base64Match[1] ? base64Match[1] : request.data;
     const buffer = Buffer.from(base64Data, "base64");
     fs.writeFileSync(absolutePath, buffer);
-    return { path: `.visualise/attachments/${fileName}` };
+    return { path: `.perceptor/attachments/${fileName}` };
   }
 }

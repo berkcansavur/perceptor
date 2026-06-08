@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
+import { ensurePerceptorIgnored } from "../../core/ensurePerceptorIgnored";
 import { CodingPreferences } from "../types";
 
 // Berkcan's house style is the out-of-the-box default; the form only edits deltas.
@@ -35,13 +35,13 @@ export const DEFAULT_CODING_PREFERENCES: CodingPreferences = {
   commentsPolicy: "minimal-why-only",
 };
 
-// Reads/writes the per-repo coding standard (.visualise/coding-preferences.json).
+// Reads/writes the per-repo coding standard (.perceptor/coding-preferences.json).
 // Missing fields fall back to the defaults so older files stay forward-compatible.
 export class CodingPreferencesStore {
   constructor(private readonly rootProvider: () => string) {}
 
   private file(): string {
-    return path.join(this.rootProvider(), ".visualise", "coding-preferences.json");
+    return path.join(this.rootProvider(), ".perceptor", "coding-preferences.json");
   }
 
   read(): CodingPreferences {
@@ -60,7 +60,7 @@ export class CodingPreferencesStore {
   save(preferences: Partial<CodingPreferences>): CodingPreferences {
     const merged = this.withDefaults(preferences);
     const file = this.file();
-    ensureVisualiseIgnored(this.rootProvider());
+    ensurePerceptorIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(merged, null, 2));
     return merged;

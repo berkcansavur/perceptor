@@ -73,7 +73,7 @@ export class ChatPanel {
     byId("chat-hint").addEventListener("click", (event) => {
       const copy = closestEl<HTMLElement>(event.target, "[data-copy-cmd]");
       if (copy) {
-        void navigator.clipboard.writeText("/visualise tasks");
+        void navigator.clipboard.writeText("/perceptor tasks");
         copy.textContent = t("tasks.copied");
         setTimeout(() => (copy.textContent = t("tasks.copyCmd")), 1500);
       }

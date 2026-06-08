@@ -429,7 +429,7 @@ export class InlineEditController {
     const status = response.data as AutoStatus;
     if (!status.enabled) {
       vscode.window.showInformationMessage(
-        "Perceptor: task queued. Enable Auto-process or run /visualise tasks to process it."
+        "Perceptor: task queued. Enable Auto-process or run /perceptor tasks to process it."
       );
     }
   }

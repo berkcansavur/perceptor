@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
+import { ensurePerceptorIgnored } from "../../core/ensurePerceptorIgnored";
 import { BehaviorSummary } from "../types";
 
-// Caches Claude's one-line method summaries (.visualise/behavior-summaries.json),
+// Caches Claude's one-line method summaries (.perceptor/behavior-summaries.json),
 // keyed by file + method. The host is the only writer (Claude reports a summary via
 // its result file and the host merges it here), so parallel describe-behavior runs
 // never race on this file.
@@ -11,7 +11,7 @@ export class BehaviorSummaryStore {
   constructor(private readonly rootProvider: () => string) {}
 
   private file(): string {
-    return path.join(this.rootProvider(), ".visualise", "behavior-summaries.json");
+    return path.join(this.rootProvider(), ".perceptor", "behavior-summaries.json");
   }
 
   private key(file: string, behavior: string): string {
@@ -38,7 +38,7 @@ export class BehaviorSummaryStore {
     const all = this.readAll();
     all[this.key(file, behavior)] = { text, at: new Date().toISOString() };
     const target = this.file();
-    ensureVisualiseIgnored(this.rootProvider());
+    ensurePerceptorIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(target), { recursive: true });
     const temporaryFile = `${target}.${process.pid}.tmp`;
     fs.writeFileSync(temporaryFile, JSON.stringify(all, null, 2));

@@ -185,7 +185,7 @@ describe("AutoProcessor", () => {
     const task = store.enqueue(blankTask());
     vi.advanceTimersByTime(DEBOUNCE_MS);
 
-    const resultPath = path.join(root, ".visualise", "results", `${task.id}.json`);
+    const resultPath = path.join(root, ".perceptor", "results", `${task.id}.json`);
     fs.mkdirSync(path.dirname(resultPath), { recursive: true });
     fs.writeFileSync(
       resultPath,
@@ -405,7 +405,7 @@ describe("AutoProcessor", () => {
   it("restores the persisted opt-in so a reopened processor stays enabled", () => {
     // The user opted in; the choice is written to disk.
     processor.setEnabled(true);
-    expect(fs.existsSync(path.join(root, ".visualise", "auto.json"))).toBe(true);
+    expect(fs.existsSync(path.join(root, ".perceptor", "auto.json"))).toBe(true);
 
     // A brand-new processor (the reopened window) adopts the persisted opt-in and processes.
     const reopened = new AutoProcessor(() => root, store, runner);

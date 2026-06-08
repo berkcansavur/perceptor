@@ -1,9 +1,11 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { createCoreService, CoreService, type AnalyzerAssets, type FileOpener } from "perceptor-core/dist/service";
-import { VisualiserPanel } from "./visualiserPanel";
+import { PerceptorPanel } from "./perceptorPanel";
 import { provisionSkill } from "./provisionSkill";
 import { InlineEditController } from "./InlineEditController";
+import { InlineDebuggerCodeLens } from "./InlineDebuggerCodeLens";
+import { InlineDebuggerController } from "./InlineDebuggerController";
 
 // The host capability the core can't provide: reveal a file in the editor at a line.
 // The core resolves the repo-relative path to an absolute one before calling this.
@@ -18,6 +20,8 @@ const editorFileOpener: FileOpener = {
 let output: vscode.OutputChannel;
 let core: CoreService | undefined;
 let inlineEdit: InlineEditController | undefined;
+let codeLens: InlineDebuggerCodeLens | undefined;
+let inlineDebugger: InlineDebuggerController | undefined;
 
 // The bundle and its assets ship together: extension.js sits in dist/, so the webview
 // build and the tree-sitter .wasm files are resolved relative to it (__dirname), never
@@ -43,9 +47,9 @@ async function openCommand(): Promise<void> {
     // (the default) it stays unset so the core auto-detects via the login shell.
     const claudePath = vscode.workspace.getConfiguration("perceptor").get<string>("claudePath", "").trim();
     if (claudePath) {
-      process.env["VISUALISE_CLAUDE_BIN"] = claudePath;
+      process.env["PERCEPTOR_CLAUDE_BIN"] = claudePath;
     } else {
-      delete process.env["VISUALISE_CLAUDE_BIN"];
+      delete process.env["PERCEPTOR_CLAUDE_BIN"];
     }
     const service = createCoreService(folder.uri.fsPath, null, editorFileOpener, analyzerAssets());
     try {
@@ -60,12 +64,13 @@ async function openCommand(): Promise<void> {
       return;
     }
     core = service;
+    codeLens?.invalidate();
   }
 
   if (vscode.workspace.getConfiguration("perceptor").get<boolean>("autoProcessOnOpen", false)) {
     core.setAuto(true);
   }
-  VisualiserPanel.show(core, webDirectory());
+  PerceptorPanel.show(core, webDirectory(), () => codeLens?.invalidate());
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -81,7 +86,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!inlineEdit) {
         inlineEdit = new InlineEditController(core);
         inlineEdit.setViewInChatCallback((taskId) => {
-          VisualiserPanel.selectChat(taskId);
+          PerceptorPanel.selectChat(taskId);
         });
         context.subscriptions.push({ dispose: () => inlineEdit?.dispose() });
       }
@@ -129,7 +134,44 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Install the /visualise Claude skill (the task-processing engine) onto this machine
+  codeLens = new InlineDebuggerCodeLens(() => core);
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider({ scheme: "file" }, codeLens)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "perceptor.simulate",
+      (uri: vscode.Uri, methodName: string, startLine: number, endLine: number, file: string, className: string) => {
+        if (!core) {
+          vscode.window.showWarningMessage("Perceptor: open Perceptor first (Cmd+Shift+P → Perceptor: Open).");
+          return;
+        }
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!workspaceRoot) {
+          return;
+        }
+        if (!inlineDebugger) {
+          inlineDebugger = new InlineDebuggerController(core, workspaceRoot);
+          context.subscriptions.push({ dispose: () => inlineDebugger?.dispose() });
+        }
+        void inlineDebugger.startSimulation(uri, methodName, startLine, endLine, file, className);
+      }
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.closeSimulation", () => {
+      inlineDebugger?.close();
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("perceptor.stopSimulation", () => {
+      if (inlineDebugger) {
+        void inlineDebugger.stopProcessing();
+      }
+    })
+  );
+
+  // Install the /perceptor Claude skill (the task-processing engine) onto this machine
   // so the extension works with zero per-user setup. Idempotent — a no-op once installed.
   provisionSkill((message) => output.appendLine(message));
 
@@ -142,6 +184,10 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
+  inlineDebugger?.dispose();
+  inlineDebugger = undefined;
+  codeLens?.dispose();
+  codeLens = undefined;
   inlineEdit?.dispose();
   inlineEdit = undefined;
   core = undefined;

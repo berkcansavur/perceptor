@@ -4,7 +4,7 @@ import * as path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { copySkill } from "../src/provisionSkill";
 
-// The skill provisioner is the reliability linchpin: it must install the /visualise skill
+// The skill provisioner is the reliability linchpin: it must install the /perceptor skill
 // onto a fresh machine, propagate upgrades, stay a no-op once current, and never throw.
 describe("copySkill", () => {
   let tmp: string;
@@ -15,7 +15,7 @@ describe("copySkill", () => {
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "skill-prov-"));
     source = path.join(tmp, "bundled", "SKILL.md");
-    dest = path.join(tmp, "home", ".claude", "skills", "visualise", "SKILL.md");
+    dest = path.join(tmp, "home", ".claude", "skills", "perceptor", "SKILL.md");
     fs.mkdirSync(path.dirname(source), { recursive: true });
     logs = [];
   });

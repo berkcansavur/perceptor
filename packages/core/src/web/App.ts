@@ -99,7 +99,7 @@ export class App {
     if (locale && locale !== getCurrentLang()) {
       setLang(locale);
     }
-    // Persist the effective locale so .visualise/locale.json always exists. The skill reads
+    // Persist the effective locale so .perceptor/locale.json always exists. The skill reads
     // that file directly and, when it's missing, falls back to guessing the language — which
     // is how an English UI ended up with Turkish Claude output. Writing it pins the choice.
     void this.api.setLocale(getCurrentLang());
@@ -126,6 +126,18 @@ export class App {
     });
     this.bus.on("search:changed", () => this.applySearch());
     this.bus.on("file:open", ({ file, line }) => void this.api.openFile(file, line));
+    this.bus.on("task:generateTests", ({ className, file, methods }) => {
+      void (async () => {
+        try {
+          const { testPath } = await this.api.generateTestScaffold(file, className, methods);
+          this.bus.emit("toast", t("dbg.testGenerated", { path: testPath }));
+          await this.loadDebugReadiness();
+          this.folderTree.render();
+        } catch {
+          this.bus.emit("toast", t("dbg.testGenerateFailed"));
+        }
+      })();
+    });
   }
 
   private async loadGraph(): Promise<void> {
@@ -147,8 +159,21 @@ export class App {
 
     this.model.build();
     this.graphView.render();
+    await this.loadDebugReadiness();
     this.folderTree.render();
     this.applySearch();
+  }
+
+  private async loadDebugReadiness(): Promise<void> {
+    try {
+      const reports = await this.api.debugReadiness();
+      this.state.debugReadiness.clear();
+      for (const report of reports) {
+        this.state.debugReadiness.set(`${report.file}::${report.className}`, report);
+      }
+    } catch {
+      // non-critical — folder tree renders without badges
+    }
   }
 
   private static readonly SECTION_BY_MODE: Record<ViewMode, string> = {

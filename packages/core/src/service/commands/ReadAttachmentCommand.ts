@@ -16,7 +16,7 @@ export class ReadAttachmentCommand extends Command<ApiRequest["readAttachment"],
 
   protected run(request: ApiRequest["readAttachment"]): { dataUrl: string } {
     const absolutePath = path.resolve(this.rootProvider(), request.path);
-    const attachmentsDir = path.resolve(this.rootProvider(), ".visualise", "attachments");
+    const attachmentsDir = path.resolve(this.rootProvider(), ".perceptor", "attachments");
     if (!absolutePath.startsWith(attachmentsDir) || !fs.existsSync(absolutePath)) {
       return { dataUrl: "" };
     }

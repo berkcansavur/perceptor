@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-// The /visualise Claude skill is the engine that processes tasks. Claude discovers
+// The /perceptor Claude skill is the engine that processes tasks. Claude discovers
 // user-level skills at ~/.claude/skills/<name>/SKILL.md (verified: the skill then appears
 // in the init event's "skills"/"slash_commands"), regardless of the launch cwd. We bundle
 // the skill in the .vsix (esbuild copies skills/ -> dist/skills) and copy it onto the
@@ -11,15 +11,30 @@ import * as path from "path";
 // Default locations: the bundled source sits next to extension.js (dist/skills/...), and
 // the install target is the user-level Claude skills directory.
 export function bundledSkillPath(): string {
-  return path.join(__dirname, "skills", "visualise", "SKILL.md");
+  return path.join(__dirname, "skills", "perceptor", "SKILL.md");
 }
 
 export function installedSkillPath(): string {
-  return path.join(os.homedir(), ".claude", "skills", "visualise", "SKILL.md");
+  return path.join(os.homedir(), ".claude", "skills", "perceptor", "SKILL.md");
 }
 
 export function provisionSkill(log: (message: string) => void): void {
   copySkill(bundledSkillPath(), installedSkillPath(), log);
+  removeLegacySkill(log);
+}
+
+// The skill was renamed visualise → perceptor. Remove the stale user-level copy so
+// the old /visualise command doesn't linger alongside /perceptor. Best-effort.
+export function removeLegacySkill(log: (message: string) => void): void {
+  const legacyDir = path.join(os.homedir(), ".claude", "skills", "visualise");
+  try {
+    if (fs.existsSync(legacyDir)) {
+      fs.rmSync(legacyDir, { recursive: true, force: true });
+      log(`legacy /visualise skill removed -> ${legacyDir}`);
+    }
+  } catch (error) {
+    log(`legacy skill cleanup skipped: ${asMessage(error)}`);
+  }
 }
 
 // Idempotent copy: write only when the installed copy is missing or differs from the

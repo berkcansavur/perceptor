@@ -5,7 +5,7 @@ import { AutoProcessRun, AutoProcessRunner, RunSession } from "./AutoProcessRunn
 import { activityFromStreamLine, usageFromStreamLine, StreamUsage } from "./streamActivity";
 import { AutoStatus } from "../types";
 
-export const AUTO_PROCESS_LOG = ".visualise/auto-process.log";
+export const AUTO_PROCESS_LOG = ".perceptor/auto-process.log";
 
 function isInDocker(): boolean {
   if (fs.existsSync("/.dockerenv")) {
@@ -21,7 +21,7 @@ function isInDocker(): boolean {
 // and the real PATH to hand the child, so the tool adapts to whatever environment the
 // user actually has. Cached because launching a login shell isn't free.
 type ShellResolution = { command: string | null; path: string | null };
-const PATH_MARKER = "__VISUALISE_PATH__";
+const PATH_MARKER = "__PERCEPTOR_PATH__";
 let shellResolution: ShellResolution | undefined;
 
 function resolveViaLoginShell(): ShellResolution {
@@ -47,12 +47,12 @@ function resolveViaLoginShell(): ShellResolution {
   return shellResolution;
 }
 
-// Resolve claude, preferring the explicit setting (VISUALISE_CLAUDE_BIN, wired from the
+// Resolve claude, preferring the explicit setting (PERCEPTOR_CLAUDE_BIN, wired from the
 // perceptor.claudePath setting), then the login shell, then whatever the inherited
 // PATH can resolve. Returns an absolute path whenever possible so spawn() doesn't depend
 // on the host process PATH.
 function detectClaudeCommand(): string | null {
-  const override = process.env["VISUALISE_CLAUDE_BIN"];
+  const override = process.env["PERCEPTOR_CLAUDE_BIN"];
   if (override && override.trim()) {
     return override.trim();
   }
@@ -169,7 +169,7 @@ class SpawnedRun implements AutoProcessRun {
   }
 }
 
-// Real runner: spawns `claude -p "/visualise tasks <root>"`. Unavailable inside
+// Real runner: spawns `claude -p "/perceptor tasks <root>"`. Unavailable inside
 // Docker or when the Claude CLI is missing.
 export class ClaudeProcessRunner implements AutoProcessRunner {
   private readonly command: string | null;
@@ -189,7 +189,7 @@ export class ClaudeProcessRunner implements AutoProcessRunner {
     }
     const logPath = path.join(rootDirectory, AUTO_PROCESS_LOG);
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
-    let prompt = `/visualise tasks ${rootDirectory} --task ${taskId}`;
+    let prompt = `/perceptor tasks ${rootDirectory} --task ${taskId}`;
     if (imageAttachmentPaths.length > 0) {
       const imageList = imageAttachmentPaths.map((imagePath) => `- ${imagePath}`).join("\n");
       prompt += `\n\nImage attachments — read each with the Read tool:\n${imageList}`;

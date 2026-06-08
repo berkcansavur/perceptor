@@ -19,6 +19,8 @@ export type {
   QueryReport,
   QueryFinding,
   QueryRiskKind,
+  ClassDebugReport,
+  MethodReadiness,
   NamingPreferences,
   PreferredLanguage,
   QualityGatePreferences,
@@ -139,5 +141,6 @@ export type AppEvents = {
   "chat:new": { description: string };
   "search:changed": void;
   "lang:changed": void;
+  "task:generateTests": { className: string; file: string; methods: string[] };
   "toast": string;
 }

@@ -44,6 +44,10 @@ export class WorkspaceService {
     };
   }
 
+  root(): string {
+    return this.session.currentRoot;
+  }
+
   graph(): Graph | null {
     return this.session.graph();
   }
