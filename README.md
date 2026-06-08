@@ -20,6 +20,16 @@ local Claude — no server, no hosted backend, your tokens.
 - **Inline Edit (`Cmd+Shift+I`)** — select code in the editor, press the
   shortcut, and a chat thread opens right next to the selected lines. Describe
   what you want changed; Claude proposes a diff you review in the Changes tab.
+- **Debug with Perceptor** — a `Debug with Perceptor` CodeLens above every
+  method, badged **tested** / **untested**. For a tested method it runs the
+  method's real test under its framework (jest / vitest / mocha), focused on
+  that method, with a breakpoint at the source line — so you step through the
+  method with its real mocks; the breakpoint hint shows how to tweak input
+  values live from the Debug Console / Variables. For an untested method it
+  offers to generate a complete, committable test with Claude (beside the
+  source, or under a `perceptor-tests/` folder). Coverage is detected per
+  method across every test file (beside-source, `perceptor-tests/`, parallel
+  test dirs).
 
 > No HTTP server, no localhost, no browser. The UI runs in a VS Code webview and
 > talks to the extension host over the webview message channel.
@@ -108,12 +118,12 @@ code --install-extension perceptor-<version>.vsix
 
 ```bash
 node packages/core/dist/cli.js "<TARGET_ROOT>"
-# writes <TARGET_ROOT>/.visualise/graph.json
+# writes <TARGET_ROOT>/.perceptor/graph.json
 ```
 
-The tool writes its scratch state under `<TARGET_ROOT>/.visualise/` (graph cache, the
+The tool writes its scratch state under `<TARGET_ROOT>/.perceptor/` (graph cache, the
 pending-actions queue, logs) and, when the target is a git repo, automatically adds
-`.visualise/` to its `.gitignore` so none of it is ever committed.
+`.perceptor/` to its `.gitignore` so none of it is ever committed.
 
 ## License
 

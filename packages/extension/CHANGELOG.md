@@ -6,6 +6,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-08
+
+### Added
+- **Debug with Perceptor**: a `Debug with Perceptor` CodeLens above every method,
+  badged **tested** / **untested** based on real test coverage.
+- **Test-based debugging**: for a tested method, Perceptor runs the method's real
+  test under its framework — **jest**, **vitest**, or **mocha** — focused on that
+  method (`-t` / `--grep`), with a breakpoint at the source line. The method runs
+  with its real mocks, so you step through it cleanly without fake-dependency
+  errors. A breakpoint hint lists the method's parameters and explains how to tweak
+  input values live from the Debug Console / Variables panel (real mocks preserved).
+- **Claude-generated tests for untested methods**: choosing *Create suitable test*
+  enqueues a Claude task that writes a complete, **committable** test — all imports
+  (including mocked types/ports) and real mock implementations, no empty `{}` or
+  `TODO` stubs — either beside the source file or under a `perceptor-tests/` folder.
+- **Per-method, multi-file coverage detection**: a method is *tested* only when a
+  `describe` / `it` / `test` title actually names it (so a mocked dependency name or
+  a helper call no longer counts as a false positive). Coverage is resolved by
+  scanning every test directory for the class (beside-source, `perceptor-tests/`,
+  parallel test dirs), including **per-method split files** such as
+  `BasketService.addItem.test.ts`.
+- **Live readiness badges**: the tested/untested badges refresh automatically when a
+  test file is created or changed, and on **re-analyze**.
+
+### Changed
+- **Skill renamed `/visualise` → `/perceptor`** and the scratch directory
+  `.visualise/` → `.perceptor/`, with a one-time automatic migration of any existing
+  data (coding preferences, task queue, results). The stale user-level `/visualise`
+  skill is removed on activation.
+- Test-runner launch passes `--roots` (jest) / `--root` (vitest) so a committable
+  test that lives outside the framework's configured roots (e.g. `perceptor-tests/`)
+  still runs.
+
+### Removed
+- The experimental stub-runner debug path (which constructed the class with
+  auto-stubbed dependencies) — debugging is now entirely test-based, which avoids
+  meaningless sample inputs and fake-dependency failures.
+
 ## [0.5.0] - 2026-06-06
 
 ### Added
@@ -26,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   autocomplete popup; navigate with arrow keys, select with Tab/Enter.
 - **View in Chat navigation**: clicking View in Chat from the inline thread
   opens the corresponding task's conversation in the Perceptor panel
-  (`VisualiserPanel.selectChat → chat:select`).
+  (`PerceptorPanel.selectChat → chat:select`).
 - **Remove Attached File**: `$(trash)` icon to remove attached files; removes
   directly when there is one file, shows a QuickPick when there are multiple.
 
@@ -71,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Markdown rendering**: Claude responses now render as rich markdown — bold,
   italic, inline code, fenced code blocks (with Copy button), lists and blockquotes.
 - **Image paste and drag-and-drop**: Ctrl+V or drag-and-drop to attach images in
-  chat; saved under `.visualise/attachments/` with thumbnail preview.
+  chat; saved under `.perceptor/attachments/` with thumbnail preview.
 - **Image attachments forwarded to Claude**: `AutoProcessor` collects image
   attachment paths from task messages and `ClaudeProcessRunner` appends them to
   the CLI prompt so the skill can read them via the Read tool.

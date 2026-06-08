@@ -2,7 +2,7 @@
   "name": "perceptor",
   "displayName": "Perceptor",
   "description": "Perceptor X-rays your repository: an interactive dependency & behavior map plus per-method analysis — Big-O complexity and N+1 / SQL-ORM query risk — with optional Claude-powered edits that use your own local Claude CLI and tokens.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "berkcansavur",
   "author": "Berkcan Şavur",
   "license": "MIT",
@@ -83,6 +83,21 @@
         "command": "perceptor.removeAttachedFileInlineEdit",
         "title": "Remove Attached File",
         "icon": "$(trash)"
+      },
+      {
+        "command": "perceptor.simulate",
+        "title": "Debug with Perceptor",
+        "category": "Perceptor"
+      },
+      {
+        "command": "perceptor.closeSimulation",
+        "title": "Close",
+        "icon": "$(close)"
+      },
+      {
+        "command": "perceptor.stopSimulation",
+        "title": "Stop",
+        "icon": "$(debug-stop)"
       }
     ],
     "menus": {
@@ -118,6 +133,16 @@
           "command": "perceptor.closeInlineEdit",
           "group": "inline",
           "when": "commentController == perceptor-inline"
+        },
+        {
+          "command": "perceptor.stopSimulation",
+          "group": "inline",
+          "when": "commentController == perceptor-debugger && perceptor.simulationProcessing"
+        },
+        {
+          "command": "perceptor.closeSimulation",
+          "group": "inline",
+          "when": "commentController == perceptor-debugger && perceptor.simulationActive"
         }
       ]
     },
