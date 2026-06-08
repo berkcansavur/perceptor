@@ -7,6 +7,7 @@ import type {
   AutoStatus,
   BehaviorSummary,
   BrowseData,
+  ClassDebugReport,
   CodingPreferences,
   ComplexityReport,
   CreatePayload,
@@ -68,6 +69,8 @@ type ApiContract = {
   openFile: { file: string };
   listSkills: { skills: { name: string; description: string }[] };
   readAttachment: { dataUrl: string };
+  debugReadiness: ClassDebugReport[];
+  generateTestScaffold: { testPath: string; content: string };
 };
 
 // The behavior every consumer depends on — an abstraction over the transport. Components
@@ -113,6 +116,8 @@ export interface Api {
   openFile(file: string, line: string): Promise<void>;
   listSkills(): Promise<{ name: string; description: string }[]>;
   readAttachment(attachmentPath: string): Promise<string>;
+  debugReadiness(): Promise<ClassDebugReport[]>;
+  generateTestScaffold(file: string, className: string, methods: string[]): Promise<{ testPath: string }>;
 }
 
 // Thrown when the host answers with an ErrorResponse. Carries the machine `code`
@@ -333,5 +338,14 @@ export class ApiClient implements Api {
   async readAttachment(attachmentPath: string): Promise<string> {
     const { dataUrl } = await this.call("readAttachment", { path: attachmentPath });
     return dataUrl;
+  }
+
+  debugReadiness(): Promise<ClassDebugReport[]> {
+    return this.call("debugReadiness", {});
+  }
+
+  async generateTestScaffold(file: string, className: string, methods: string[]): Promise<{ testPath: string }> {
+    const { testPath } = await this.call("generateTestScaffold", { file, className, methods });
+    return { testPath };
   }
 }

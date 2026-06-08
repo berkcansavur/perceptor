@@ -40,7 +40,7 @@ export class TasksPanel {
       if (!copy) {
         return;
       }
-      void navigator.clipboard.writeText("/visualise tasks");
+      void navigator.clipboard.writeText("/perceptor tasks");
       copy.textContent = t("tasks.copied");
       setTimeout(() => (copy.textContent = t("tasks.copyCmd")), 1500);
     });

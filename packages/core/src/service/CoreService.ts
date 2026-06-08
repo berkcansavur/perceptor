@@ -5,6 +5,10 @@ import { TaskService } from "./TaskService";
 import { PreferencesService } from "./PreferencesService";
 import { AnalysisService } from "./AnalysisService";
 import type { AnalyzerAssets } from "../core";
+import { SimulationEngine } from "../core/SimulationEngine";
+import { TestScaffoldGenerator } from "../core/TestScaffoldGenerator";
+import { TestDiscovery } from "../core/TestDiscovery";
+import { DebugReadinessAnalyzer } from "../core/DebugReadinessAnalyzer";
 import type { AutoStatus, FileOpener } from "./types";
 import { ExceptionFunnel, successResponse, type ApiResponse } from "./api";
 import {
@@ -37,6 +41,10 @@ import {
   UploadAttachmentCommand,
   ListSkillsCommand,
   ReadAttachmentCommand,
+  SimulateCommand,
+  GenerateDebugRunnerCommand,
+  AnalyzeDebugReadinessCommand,
+  GenerateTestScaffoldCommand,
 } from "./commands";
 
 // Composition root + RPC boundary. It owns no business logic — it wires the shared session
@@ -65,6 +73,8 @@ export class CoreService {
     this.workspace = new WorkspaceService(session, fileOpener, localeProvider);
     this.tasks = new TaskService(rootProvider, localeProvider);
     this.analysis = new AnalysisService();
+    const testDiscovery = new TestDiscovery();
+    const debugReadinessAnalyzer = new DebugReadinessAnalyzer(testDiscovery);
     this.commands = new CommandRegistry([
       new MetaCommand(this.workspace),
       new GraphCommand(this.workspace),
@@ -91,6 +101,10 @@ export class CoreService {
       new SetLocaleCommand(this.preferences),
       new BehaviorSummaryCommand(this.preferences),
       new ComplexityCommand(this.analysis),
+      new SimulateCommand(this.analysis, new SimulationEngine()),
+      new GenerateDebugRunnerCommand(this.workspace, debugReadinessAnalyzer, testDiscovery),
+      new AnalyzeDebugReadinessCommand(this.workspace, debugReadinessAnalyzer),
+      new GenerateTestScaffoldCommand(this.workspace, new TestScaffoldGenerator(), testDiscovery),
       new UploadAttachmentCommand(rootProvider),
       new ListSkillsCommand(rootProvider),
       new ReadAttachmentCommand(rootProvider),

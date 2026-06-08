@@ -2,7 +2,7 @@ import * as fs from "fs";
 import { pathIsIgnored } from "../../core";
 
 // Watches a repo (recursively, debounced) and fires onChange for relevant edits. It shares
-// the analyzer's ignore policy (node_modules, build output, dot-dirs, .visualise, …) so it
+// the analyzer's ignore policy (node_modules, build output, dot-dirs, .perceptor, …) so it
 // only re-analyzes on changes that can actually alter the graph — otherwise routine churn
 // in dist/ or .next/ would loop the UI through endless reload/refresh cycles.
 export class FileWatcher {

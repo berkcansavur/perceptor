@@ -1,6 +1,6 @@
 ---
-name: visualise
-description: Launch the repo-visualiser — interactive Obsidian-style folder/dependency & behavior map of a repository (Graph mode = folders sized by connections, Folder mode = VS-style tree). Also processes Phase-2 change tasks via "/visualise tasks". Use when the user types /visualise or asks to visualize/map the codebase, or to process visualiser tasks.
+name: perceptor
+description: Launch Perceptor — interactive Obsidian-style folder/dependency & behavior map of a repository (Graph mode = folders sized by connections, Folder mode = VS-style tree). Also processes Phase-2 change tasks via "/perceptor tasks". Use when the user types /perceptor or asks to visualize/map the codebase, or to process perceptor tasks.
 ---
 
 ## Mode dispatch
@@ -10,7 +10,7 @@ description: Launch the repo-visualiser — interactive Obsidian-style folder/de
 
 ## What it does
 
-**repo-visualiser is a VS Code extension** (npm workspaces monorepo). It scans a
+**Perceptor is a VS Code extension** (npm workspaces monorepo). It scans a
 repo with tree-sitter (Java, C#, TypeScript/TSX/JS; extensible) and renders an
 interactive map inside a webview — **no HTTP server, no browser, no localhost**.
 The webview talks to the extension host over the VS Code message channel; the
@@ -28,10 +28,10 @@ tasks use the user's own `claude` CLI/tokens.
 
 ## Configuration
 
-- `VISUALISER_HOME` — the repo-visualiser **source** checkout, only needed if you are
+- `PERCEPTOR_HOME` — the Perceptor **source** checkout, only needed if you are
   developing/building the extension itself. End users install the packaged `.vsix` and
   never need this; the extension provisions this skill for them automatically.
-  **Task-processing mode (below) never uses `VISUALISER_HOME`** — it operates purely on
+  **Task-processing mode (below) never uses `PERCEPTOR_HOME`** — it operates purely on
   the `<TARGET_ROOT>` passed in `$ARGUMENTS`. If you do need it (dev/launch only),
   resolve it from the current checkout rather than assuming a fixed path.
 - Packages: `packages/core` (engine: analyzer + CoreService + CLI), `packages/extension`.
@@ -41,27 +41,27 @@ tasks use the user's own `claude` CLI/tokens.
 This section is for **developing** the extension; end users just install the `.vsix`
 and click the **Perceptor** status-bar item (or run "Perceptor: Open").
 
-1. Ensure built: `cd $VISUALISER_HOME && npm install && npm run build` (if needed).
+1. Ensure built: `cd $PERCEPTOR_HOME && npm install && npm run build` (if needed).
 2. Tell the user (in the §"Output language" locale) to open the map in VS Code:
-   - Dev: open `$VISUALISER_HOME` in VS Code → **F5** → in the Extension Development
+   - Dev: open `$PERCEPTOR_HOME` in VS Code → **F5** → in the Extension Development
      Host: `Cmd+Shift+P` → **"Perceptor: Open"**.
    - Installed: `npm run package` → `code --install-extension
      packages/extension/*.vsix` → `Cmd+Shift+P` → "Perceptor: Open".
 3. Optional headless graph: `node packages/core/dist/cli.js "<TARGET_ROOT>"` writes
-   `<TARGET_ROOT>/.visualise/graph.json` (analyze-only, no UI).
+   `<TARGET_ROOT>/.perceptor/graph.json` (analyze-only, no UI).
 
 ## Notes
 
 - Add a language: register it in `packages/core/src/core/LanguageRegistry.ts` +
   add an extractor under `packages/core/src/core/extractors/` (implement
   `LanguageExtractor` / extend `AbstractExtractor`).
-- Suggest gitignoring `.visualise/` in the target repo.
+- Suggest gitignoring `.perceptor/` in the target repo.
 
 ---
 
-# Task processing mode  (`/visualise tasks [repoPath]`)
+# Task processing mode  (`/perceptor tasks [repoPath]`)
 
-The UI queues change requests in `<TARGET_ROOT>/.visualise/pending-actions.json`.
+The UI queues change requests in `<TARGET_ROOT>/.perceptor/pending-actions.json`.
 Task types:
 
 - **`move-behavior`** — drag a method from class A onto class B (move it).
@@ -91,7 +91,7 @@ Task types:
 
 Your job here is to act on that queue. **You READ `pending-actions.json` but you do
 NOT write it.** You report your outcome by writing ONE file — your task's own result
-file `.visualise/results/<id>.json` (see §"Result file contract"). The host is the
+file `.perceptor/results/<id>.json` (see §"Result file contract"). The host is the
 sole writer of the queue and merges your result in; this lets several tasks run in
 parallel without ever racing on a shared file. **All generated code MUST follow
 Berkcan's coding best-practices** (see his
@@ -102,13 +102,13 @@ encapsulation, OOP-first; tests/compilation must not break).
 ## 1. Resolve the target repo
 
 - If `$ARGUMENTS` has a path after `tasks`, use it as `<TARGET_ROOT>`.
-- Else use the current working directory if it has `.visualise/pending-actions.json`.
+- Else use the current working directory if it has `.perceptor/pending-actions.json`.
   (There is no server/localhost — the UI is a VS Code webview; the queue file is the
   only contract.)
 
 ## 1a. Single-task mode (`--task <id>`) — DEFAULT when present
 
-The auto-processor invokes this skill **scoped to one task**: `/visualise tasks
+The auto-processor invokes this skill **scoped to one task**: `/perceptor tasks
 <TARGET_ROOT> --task <id>`. When `--task <id>` is in `$ARGUMENTS`:
 
 - Act on **ONLY** that task — do NOT scan, propose, or apply any other queue entry.
@@ -132,7 +132,7 @@ The auto-processor invokes this skill **scoped to one task**: `/visualise tasks
 
 ## 1b. Load the coding preferences (do this before proposing any code)
 
-**`<TARGET_ROOT>/.visualise/coding-preferences.json` is the authoritative standard** —
+**`<TARGET_ROOT>/.perceptor/coding-preferences.json` is the authoritative standard** —
 the user fills it in the **⚙ Prefs** form and Claude MUST obey it. Read it first. Shape:
 `{ primaryLanguage, additionalLanguages[], naming{ classCase, methodCase, variableCase,
 constantCase, fileNaming, booleanPrefixes[], testPattern, allowAbbreviations },
@@ -171,7 +171,7 @@ forbidCodeDuplication, maxMethodLines, enforceSingleResponsibility }, commentsPo
     `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`,
     `noPropertyAccessFromIndexSignature`, `allowUnreachableCode: false`, `allowUnusedLabels:
     false`, `isolatedModules`, `forceConsistentCasingInFileNames`. (Reference implementation:
-    `repo-visualiser/tsconfig.base.json` + `service/{api,exception}` + `service/commands`.)
+    `Perceptor/tsconfig.base.json` + `service/{api,exception}` + `service/commands`.)
 - If the file is **absent**, fall back to inferring the standard from the actual source
   + config (`package.json`, `build.gradle`, `*.csproj`, lint configs) and the user's
   `CLAUDE.md`/memory — but prefer the file whenever it exists.
@@ -505,7 +505,7 @@ mechanics — code that ignores them is **not framework-native** and must be rej
 
 ## 2. Read the queue
 
-Read `<TARGET_ROOT>/.visualise/pending-actions.json` (array of task objects).
+Read `<TARGET_ROOT>/.perceptor/pending-actions.json` (array of task objects).
 Common fields: `{ id, type, status, artifact, messages[], createdAt, updatedAt }`, where
 `artifact` is a discriminated union — `{ kind: "none" }` until a run proposes, then
 `{ kind: "proposed", diff, impact }`, and `{ kind: "applied", diff, impact, commitMessage }`
@@ -640,7 +640,7 @@ edit `pending-actions.json` yourself.
 ## Result file contract (STRICT — how you report back)
 
 You report your outcome by writing exactly one JSON file, your task's own
-`<TARGET_ROOT>/.visualise/results/<id>.json` (create the `results/` dir if needed).
+`<TARGET_ROOT>/.perceptor/results/<id>.json` (create the `results/` dir if needed).
 **This is the ONLY file you write to report progress** — never edit
 `pending-actions.json` or `behavior-summaries.json` (the host owns those; concurrent
 runs would corrupt them). The file is **discriminated by `kind`** — pick the one
@@ -669,7 +669,7 @@ outcome and write exactly its fields (no "set-or-leave" nullable bag):
 
 ## Output language (STRICT — full-stack consistency)
 
-Read `<TARGET_ROOT>/.visualise/locale.json` (`{ "locale": "en" | "tr" }`). **Every piece
+Read `<TARGET_ROOT>/.perceptor/locale.json` (`{ "locale": "en" | "tr" }`). **Every piece
 of text you generate MUST be in that locale** — task `messages`, `spec.description`,
 `impact.notes`, `commitMessage`, and behavior summaries. The UI chrome and your text
 must never be a mix of languages. If the file is missing, match the user's language.
@@ -731,12 +731,12 @@ applied / errored, and what needs their review. Never auto-commit; leave changes
 
 The extension host has an optional, default-OFF "Auto-process" toggle. When on, a
 host-side scheduler runs up to **3 tasks in parallel**, each as its own
-`claude -p "/visualise tasks <repo> --task <id>"` (this skill, scoped to one task —
+`claude -p "/perceptor tasks <repo> --task <id>"` (this skill, scoped to one task —
 §1a) on its own reused session. Two runs are never scheduled on tasks whose diffs
 touch the same file, so your edits never collide. The host owns `task.lock` and the
 queue file — DON'T touch them. **You MUST advance the task's status** by writing your
 result file (`pending`→`proposed`, or `approved`→`applied`/`error`): the auto-processor
 gives each status exactly one headless attempt, so a task you leave on its original
 status will NOT be retried (token-conservative) and will sit in the "awaiting" banner
-for the user. Always finish by writing your `.visualise/results/<id>.json`
+for the user. Always finish by writing your `.perceptor/results/<id>.json`
 (§"Result file contract").

@@ -1,19 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
+import { ensurePerceptorIgnored } from "../../core/ensurePerceptorIgnored";
 
 export type Locale = "en" | "tr";
 
 const DEFAULT_LOCALE: Locale = "en";
 
-// The app locale, persisted to .visualise/locale.json so it's a single source of
+// The app locale, persisted to .perceptor/locale.json so it's a single source of
 // truth: the UI chrome and Claude's generated text (messages, summaries, commit
 // messages) all follow it — never a mix of languages.
 export class LocaleStore {
   constructor(private readonly rootProvider: () => string) {}
 
   private file(): string {
-    return path.join(this.rootProvider(), ".visualise", "locale.json");
+    return path.join(this.rootProvider(), ".perceptor", "locale.json");
   }
 
   read(): Locale {
@@ -32,7 +32,7 @@ export class LocaleStore {
   save(locale: string): Locale {
     const normalized = this.normalize(locale);
     const file = this.file();
-    ensureVisualiseIgnored(this.rootProvider());
+    ensurePerceptorIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ locale: normalized }, null, 2));
     return normalized;

@@ -1,6 +1,6 @@
 import type { AppState } from "../state/AppState";
 import type { Emitter } from "../Emitter";
-import type { Behavior, TreeFolder } from "../types";
+import type { Behavior, ClassDebugReport, TreeFolder } from "../types";
 import { byId, closestEl, escapeHtml, qsa } from "../dom";
 import { folderColor, roleColorHex } from "../graph/roleColors";
 import { t } from "../i18n";
@@ -165,6 +165,35 @@ export class FolderTree {
     return `${behavior.name}(${params}): ${behavior.returnType}`;
   }
 
+  private debugBadge(behaviorName: string, report: ClassDebugReport | undefined): string {
+    if (!report) {
+      return "";
+    }
+    const method = report.methods.find((methodReadiness) => methodReadiness.behavior === behaviorName);
+    if (!method) {
+      return "";
+    }
+    return `<span class="dbg-badge dbg-${method.status}" title="${t(`dbg.${method.status}`)}">${t(`dbg.${method.status}`)}</span>`;
+  }
+
+  private debugPercent(report: ClassDebugReport | undefined): string {
+    if (!report) {
+      return "";
+    }
+    return `<span class="dbg-percent" title="${t("dbg.percentTip")}">${report.debuggablePercent}%</span>`;
+  }
+
+  private generateTestsButton(report: ClassDebugReport | undefined): string {
+    if (!report) {
+      return "";
+    }
+    const hasUntested = report.methods.some((methodReadiness) => methodReadiness.status === "untested");
+    if (!hasUntested) {
+      return "";
+    }
+    return `<button class="row-btn gen-tests-btn">${t("dbg.generateTests")}</button>`;
+  }
+
   private renderFolderNode(folder: TreeFolder): string {
     const folderEntries = [...folder.folders.values()].sort((a, b) => a.name.localeCompare(b.name));
     const classEntries = [...folder.classes].sort((a, b) => a.name.localeCompare(b.name));
@@ -184,6 +213,7 @@ export class FolderTree {
         </div>`;
       }),
       ...classEntries.map((node) => {
+        const report = this.state.debugReadiness.get(`${node.file}::${node.name}`);
         const behaviors = node.behaviors
           .map(
             (behavior) =>
@@ -193,7 +223,7 @@ export class FolderTree {
                 this.behaviorSignaturePlain(behavior)
               )}"><span class="vis-badge vis-${behavior.visibility}">${behavior.visibility}</span><span class="behavior-sig">${this.behaviorSignature(
                 behavior
-              )}</span></div>`
+              )}</span>${this.debugBadge(behavior.name, report)}</div>`
           )
           .join("");
         return `<div class="tree-class" data-name="${escapeHtml(
@@ -206,8 +236,10 @@ export class FolderTree {
             <span class="kind-badge kind-${node.kind}">${node.kind}</span>
             <span class="tree-class-name">${escapeHtml(node.name)}</span>
             <span class="tree-count">${node.behaviors.length}</span>
+            ${this.debugPercent(report)}
             <button class="row-btn vscode-btn" title="${t("vscode.open")}">VS Code</button>
             ${isBehaviorlessKind(node.kind) ? "" : `<button class="row-btn add-behavior-btn">${t("addbeh.btn")}</button>`}
+            ${this.generateTestsButton(report)}
           </div>
           <div class="tree-behaviors">${behaviors || '<div class="tree-empty">no public behaviors</div>'}</div>
         </div>`;
@@ -264,6 +296,21 @@ export class FolderTree {
         event.stopPropagation();
         const row = closestEl<HTMLElement>(newFolderButton, ".tree-folder-row");
         this.bus.emit("form:create", { kind: "folder", dir: row ? row.dataset.path ?? "" : "" });
+        return;
+      }
+      const genTestsButton = closestEl(event.target, ".gen-tests-btn");
+      if (genTestsButton) {
+        event.stopPropagation();
+        const owner = closestEl<HTMLElement>(genTestsButton, ".tree-class");
+        if (owner) {
+          const className = owner.dataset.class ?? "";
+          const file = owner.dataset.file ?? "";
+          const report = this.state.debugReadiness.get(`${file}::${className}`);
+          const untestedMethods = report
+            ? report.methods.filter((methodReadiness) => methodReadiness.status === "untested").map((methodReadiness) => methodReadiness.behavior)
+            : [];
+          this.bus.emit("task:generateTests", { className, file, methods: untestedMethods });
+        }
         return;
       }
       const behaviorRow = closestEl<HTMLElement>(event.target, ".behavior");

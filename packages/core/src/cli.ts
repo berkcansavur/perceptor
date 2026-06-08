@@ -6,9 +6,9 @@ import { resolveInstalledAssets } from "./core/installedAssets";
 const HELP_TEXT = `perceptor-core — dependency/behavior map analyzer
 
 Usage:
-  visualise [path]
+  perceptor [path]
 
-Writes <path>/.visualise/graph.json. The interactive map lives in the
+Writes <path>/.perceptor/graph.json. The interactive map lives in the
 "Perceptor" VS Code extension (Cmd+Shift+P → "Perceptor: Open").
 
 Arguments:

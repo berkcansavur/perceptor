@@ -1,5 +1,5 @@
 node_modules/
-.visualise/
+.perceptor/
 dist/
 *.log
 .DS_Store

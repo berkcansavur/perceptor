@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ensureVisualiseIgnored } from "../../core/ensureVisualiseIgnored";
+import { ensurePerceptorIgnored } from "../../core/ensurePerceptorIgnored";
 
 // The auto-processing opt-in ("let Claude carry out tasks"), persisted to
-// .visualise/auto.json so the choice survives an editor reload. Without this the flag
+// .perceptor/auto.json so the choice survives an editor reload. Without this the flag
 // lived only in memory and silently reset to OFF every time the window reloaded, leaving
 // the user opted-in in their head but opted-out in fact (the onboarding prompt, remembered
 // per repo, never reappears to let them re-enable). Default OFF — it's the one feature
@@ -12,7 +12,7 @@ export class AutoEnableStore {
   constructor(private readonly rootProvider: () => string) {}
 
   private file(): string {
-    return path.join(this.rootProvider(), ".visualise", "auto.json");
+    return path.join(this.rootProvider(), ".perceptor", "auto.json");
   }
 
   read(): boolean {
@@ -30,7 +30,7 @@ export class AutoEnableStore {
 
   save(enabled: boolean): void {
     const file = this.file();
-    ensureVisualiseIgnored(this.rootProvider());
+    ensurePerceptorIgnored(this.rootProvider());
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ enabled }, null, 2));
   }

@@ -22,7 +22,7 @@ export const IGNORED_DIRECTORIES: ReadonlySet<string> = new Set([
   "Temp",
   "Logs",
   "Obj",
-  ".visualise",
+  ".perceptor",
 ]);
 
 // A path segment to skip: an explicitly-ignored directory, or any dotfile/dot-directory

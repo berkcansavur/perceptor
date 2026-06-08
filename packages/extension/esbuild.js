@@ -33,8 +33,10 @@ function copyAssets() {
 
   const coreDir = path.dirname(require.resolve("perceptor-core/package.json"));
   const coreWeb = path.join(coreDir, "dist", "web");
-  for (const asset of fs.readdirSync(coreWeb)) {
-    fs.copyFileSync(path.join(coreWeb, asset), path.join(webOut, asset));
+  for (const entry of fs.readdirSync(coreWeb, { withFileTypes: true })) {
+    if (entry.isFile()) {
+      fs.copyFileSync(path.join(coreWeb, entry.name), path.join(webOut, entry.name));
+    }
   }
 
   const grammarsDir = path.join(path.dirname(require.resolve("tree-sitter-wasms/package.json")), "out");
@@ -51,7 +53,7 @@ function copyAssets() {
 
   fs.copyFileSync(require.resolve("web-tree-sitter/tree-sitter.wasm"), path.join(wasmOut, "tree-sitter.wasm"));
 
-  // The /visualise Claude skill is the engine that processes tasks. Bundling it into the
+  // The /perceptor Claude skill is the engine that processes tasks. Bundling it into the
   // .vsix lets the extension provision it onto the user's machine at activation, so it
   // works with zero per-user setup (see provisionSkill in extension.ts).
   const skillsSrc = path.resolve(__dirname, "..", "..", "skills");

@@ -485,6 +485,33 @@ button:hover {
   color: var(--accent);
 }
 
+.dbg-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.dbg-pure { background: rgba(75, 180, 100, 0.15); color: var(--field); }
+.dbg-tested { background: rgba(80, 160, 220, 0.15); color: var(--accent); }
+.dbg-untested { background: rgba(224, 96, 122, 0.15); color: #e0607a; }
+
+.dbg-percent {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.gen-tests-btn {
+  font-size: 10px;
+  margin-left: 4px;
+}
+
 #toast {
   position: fixed;
   bottom: 18px;

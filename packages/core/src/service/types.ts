@@ -244,6 +244,19 @@ export type ApiRequest = {
   openFile: { file: string; line: number };
   listSkills: EmptyRequest;
   readAttachment: { path: string };
+  simulate: { code: string; name: string; file?: string; env?: Record<string, unknown> };
+  generateDebugRunner: {
+    file: string;
+    className: string;
+    methodName: string;
+    payload: Record<string, unknown>;
+  };
+  debugReadiness: EmptyRequest;
+  generateTestScaffold: {
+    file: string;
+    className: string;
+    methods: string[];
+  };
 }
 
 // Host-provided capability the service can't implement itself: opening a file in the
@@ -259,7 +272,7 @@ export type BehaviorSummaryReport = {
 }
 
 // What one headless run reports back, written to its own per-task result file
-// (.visualise/results/<id>.json); the host is the SOLE writer of the shared queue,
+// (.perceptor/results/<id>.json); the host is the SOLE writer of the shared queue,
 // merging this in at run exit. Discriminated by `kind` so every outcome carries
 // exactly its own fields — no "set or leave untouched" nullable patch bag.
 export type ProposedResult = {
@@ -466,7 +479,7 @@ export type QualityGatePreferences = {
 }
 
 // The per-repo coding standard the UI form fills and Claude obeys when it
-// generates or moves code (persisted at .visualise/coding-preferences.json).
+// generates or moves code (persisted at .perceptor/coding-preferences.json).
 export type CodingPreferences = {
   primaryLanguage: PreferredLanguage;
   // Empty string = no framework preference. Constrained in the UI to the primary
@@ -477,3 +490,66 @@ export type CodingPreferences = {
   qualityGates: QualityGatePreferences;
   commentsPolicy: string;
 }
+
+export type SimulatedStep = {
+  readonly kind: "input" | "call" | "return" | "throw" | "branch";
+  readonly description: string;
+  readonly taken: boolean;
+  readonly depth: number;
+  readonly verdict: "true" | "false" | "unknown" | null;
+};
+
+export type SimulationMetadata = {
+  readonly inputRefs: readonly string[];
+  readonly stubRefs: readonly string[];
+  readonly defaultPayload: Record<string, unknown>;
+};
+
+export type SimulationResult = {
+  readonly metadata: SimulationMetadata;
+  readonly path: readonly SimulatedStep[] | null;
+};
+
+// Debug readiness for one method: whether a test covers it (run that), otherwise
+// untested (offer to generate one). `defaultPayload` labels the editable params.
+export type DebugReadinessTested = {
+  readonly readiness: "tested";
+  readonly testFile: string;
+  readonly framework: string;
+  readonly methodLine: number;
+  readonly language: string;
+  readonly defaultPayload: Record<string, unknown>;
+};
+
+export type DebugReadinessUntested = {
+  readonly readiness: "untested";
+  readonly suggestedTestPath: string;
+  readonly framework: string;
+  readonly className: string;
+  readonly methodName: string;
+  readonly language: string;
+  readonly methodLine: number;
+  readonly isAsync: boolean;
+  readonly defaultPayload: Record<string, unknown>;
+};
+
+export type DebugRunnerResult = DebugReadinessTested | DebugReadinessUntested;
+
+export type MethodReadiness = {
+  readonly behavior: string;
+  readonly status: "pure" | "tested" | "untested";
+};
+
+export type ClassDebugReport = {
+  readonly className: string;
+  readonly file: string;
+  readonly methods: readonly MethodReadiness[];
+  readonly debuggablePercent: number;
+  readonly testFile: string | null;
+  readonly suggestedTestPath: string | null;
+};
+
+export type GenerateTestScaffoldResult = {
+  readonly testPath: string;
+  readonly content: string;
+};

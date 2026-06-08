@@ -7,12 +7,12 @@ import { EdgeBuilder } from "./EdgeBuilder";
 import { FileNodeRegistry } from "./FileNodeRegistry";
 import { GraphBuilder } from "./GraphBuilder";
 import { AnalyzerAssets, Graph } from "./types";
-import { ensureVisualiseIgnored } from "./ensureVisualiseIgnored";
+import { ensurePerceptorIgnored, migrateLegacyScratchDir } from "./ensurePerceptorIgnored";
 
 export * from "./types";
 export { GraphBuilder } from "./GraphBuilder";
 export { LanguageRegistry } from "./LanguageRegistry";
-export { ensureVisualiseIgnored } from "./ensureVisualiseIgnored";
+export { ensurePerceptorIgnored, migrateLegacyScratchDir } from "./ensurePerceptorIgnored";
 export { IGNORED_DIRECTORIES, isIgnoredSegment, pathIsIgnored } from "./FileWalker";
 
 // Assets are injected (never resolved from node_modules here) so this module carries no
@@ -29,11 +29,13 @@ function createGraphBuilder(assets: AnalyzerAssets): GraphBuilder {
 }
 
 export async function analyze(rootDirectory: string, assets: AnalyzerAssets): Promise<Graph> {
+  // Migrate any pre-rename .visualise scratch dir before stores read it.
+  migrateLegacyScratchDir(rootDirectory);
   return createGraphBuilder(assets).analyze(rootDirectory);
 }
 
 export function outputPath(rootDirectory: string): string {
-  return path.join(rootDirectory, ".visualise", "graph.json");
+  return path.join(rootDirectory, ".perceptor", "graph.json");
 }
 
 export async function analyzeToFile(
@@ -43,7 +45,7 @@ export async function analyzeToFile(
   const graph = await analyze(rootDirectory, assets);
   const target = outputPath(rootDirectory);
   fs.mkdirSync(path.dirname(target), { recursive: true });
-  ensureVisualiseIgnored(rootDirectory);
+  ensurePerceptorIgnored(rootDirectory);
   fs.writeFileSync(target, JSON.stringify(graph, null, 2));
   return { graph, outputPath: target };
 }

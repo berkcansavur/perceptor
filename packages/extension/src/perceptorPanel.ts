@@ -12,13 +12,14 @@ type RpcMessage = {
 
 // Hosts the UI in a webview and bridges the webview message channel to the
 // CoreService — no HTTP, no localhost. Assets load via asWebviewUri.
-export class VisualiserPanel {
-  private static current: VisualiserPanel | undefined;
+export class PerceptorPanel {
+  private static current: PerceptorPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
 
   private constructor(
     private readonly core: CoreService,
-    private readonly webDirectory: string
+    private readonly webDirectory: string,
+    private readonly onReanalyze: () => void
   ) {
     this.panel = vscode.window.createWebviewPanel("perceptor", "Perceptor", vscode.ViewColumn.One, {
       enableScripts: true,
@@ -28,24 +29,24 @@ export class VisualiserPanel {
     this.panel.webview.html = this.html(this.panel.webview);
     this.panel.webview.onDidReceiveMessage((message: RpcMessage) => void this.onMessage(message));
     this.panel.onDidDispose(() => {
-      VisualiserPanel.current = undefined;
+      PerceptorPanel.current = undefined;
     });
   }
 
-  static show(core: CoreService, webDirectory: string): void {
-    if (VisualiserPanel.current) {
-      VisualiserPanel.current.panel.reveal(vscode.ViewColumn.One);
+  static show(core: CoreService, webDirectory: string, onReanalyze: () => void = () => {}): void {
+    if (PerceptorPanel.current) {
+      PerceptorPanel.current.panel.reveal(vscode.ViewColumn.One);
       return;
     }
-    VisualiserPanel.current = new VisualiserPanel(core, webDirectory);
+    PerceptorPanel.current = new PerceptorPanel(core, webDirectory, onReanalyze);
   }
 
   static selectChat(taskId: string): void {
-    if (!VisualiserPanel.current) {
+    if (!PerceptorPanel.current) {
       return;
     }
-    VisualiserPanel.current.panel.reveal(vscode.ViewColumn.One);
-    void VisualiserPanel.current.panel.webview.postMessage({ type: "selectChat", taskId });
+    PerceptorPanel.current.panel.reveal(vscode.ViewColumn.One);
+    void PerceptorPanel.current.panel.webview.postMessage({ type: "selectChat", taskId });
   }
 
   // Every action — including openFile — flows through core.dispatch, which always
@@ -55,6 +56,11 @@ export class VisualiserPanel {
   private async onMessage(message: RpcMessage): Promise<void> {
     const result = await this.core.dispatch(message.action, message.payload);
     void this.panel.webview.postMessage({ id: message.id, result });
+    // A re-analyze rebuilds the graph and re-reads tests; refresh the editor's
+    // CodeLens badges (tested/untested) too, not just the webview.
+    if (message.action === "reanalyze" && (result as { success?: boolean })?.success) {
+      this.onReanalyze();
+    }
   }
 
   private html(webview: vscode.Webview): string {
